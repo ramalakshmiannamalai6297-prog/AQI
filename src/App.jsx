@@ -1,52 +1,35 @@
-import SearchBar from "./components/SearchBar";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import AQICard from "./components/AQICard";
-import PollutantCard from "./components/PollutantCard";
-import AQIChart from "./components/AQIChart";
-
-import EventCard from "./components/EventCard";
-import PredictionCard from "./components/PredictionCard";
-import RecommendationCard from "./components/RecommendationCard";
-import NotificationCard from "./components/NotificationCard";
-import HotspotCard from "./components/HotspotCard";
-import AirMap from "./components/AirMap";
 import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Hotspots from "./pages/Hotspots";
+import Prediction from "./pages/Prediction";
+import Recommendations from "./pages/Recommendations";
+import Notifications from "./pages/Notifications";
 
 function App() {
   return (
-    <div>
-      <Navbar />
-      <div style={{ textAlign: "center", marginTop: "40px" }}>
-        <h1>Welcome to AirLens AI 🚀</h1>
-  
-        <button>Explore Dashboard</button>
+    <Router>
+      <div className="app-container">
+        <Navbar />
+        <main className="main-content" style={{ flex: 1, width: "100%" }}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/map" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/hotspots" element={<Hotspots />} />
+            <Route path="/prediction" element={<Prediction />} />
+            <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+        <Footer />
       </div>
-      <SearchBar />
-      <AQICard />
-      <PollutantCard />
-      <AQIChart />
-      <EventCard />
-      <PredictionCard />
-      <RecommendationCard />
- <div
-  style={{
-    backgroundColor: "#fefce8",
-    borderRadius: "15px",
-    boxShadow: "0px 2px 10px lightgray",
-    margin: "20px",
-    padding: "20px",
-  }}
->
-  <h2>🔔 Notifications</h2>
-  <p>⚠️ AQI crossed 150.</p>
-  <p>🌫️ PM2.5 levels are increasing.</p>
-  <p>📢 Air quality is expected to worsen tomorrow.</p>
-</div>
-      <NotificationCard />
-      <HotspotCard />
-      <AirMap />
-      <Footer />
-    </div>
+    </Router>
   );
 }
+
 export default App;
