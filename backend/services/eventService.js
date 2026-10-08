@@ -89,6 +89,46 @@ async function detectPollutantSpike(
     }
 }
 
+async function getRecentEvents(limit = 10) {
+    const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
+
+    const [rows] = await db.query(
+        `
+        SELECT
+            pe.event_id,
+            pe.event_type,
+            pe.pollutant_id,
+            pe.previous_value,
+            pe.current_value,
+            pe.change_value,
+            pe.change_percentage,
+            pe.severity,
+            pe.message,
+            pe.detected_at,
+
+            s.station_id,
+            s.station_name,
+            s.city,
+            s.state,
+
+            ar.last_update
+
+        FROM pollution_events pe
+        JOIN stations s
+            ON s.station_id = pe.station_id
+        JOIN aqi_readings ar
+            ON ar.reading_id = pe.reading_id
+
+        ORDER BY pe.detected_at DESC
+        LIMIT ?
+        `,
+        [safeLimit]
+    );
+
+    return rows;
+}
+
 module.exports = {
-    detectPollutantSpike
+    detectPollutantSpike,
+    getRecentEvents
 }
