@@ -72,9 +72,30 @@ function Prediction() {
   }, [selectedStationId, hours]);
 
   const handleRefresh = async () => {
+    setError(null);
+    if (stations.length === 0) {
+      setLoading(true);
+      try {
+        const res = await getStations();
+        if (res && Array.isArray(res.stations) && res.stations.length > 0) {
+          setStations(res.stations);
+          setSelectedStationId(String(res.stations[0].stationId));
+          const data = await getStationForecast(res.stations[0].stationId, hours);
+          setForecastData(data);
+        } else {
+          setError("No monitoring stations available from server.");
+        }
+      } catch (err) {
+        console.error("Prediction: Error reloading stations:", err);
+        setError("Could not reach backend server to load monitoring stations.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!selectedStationId) return;
     setForecastLoading(true);
-    setError(null);
     try {
       const data = await getStationForecast(selectedStationId, hours);
       setForecastData(data);

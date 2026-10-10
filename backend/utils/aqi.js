@@ -195,59 +195,108 @@ function getAQICategory(aqi) {
 function generateRecommendations(aqi, dominantKey) {
   const cat = getAQICategory(aqi);
   const label = cat.label;
+  const normKey = normalizePollutantKey(dominantKey);
   const recommendations = [];
 
   let genAdvice, childAdvice, elderlyAdvice, asthmaAdvice, exerciseAdvice, maskAdvice, windowAdvice;
-  let severity = "low";
+  let genSev, childSev, elderlySev, asthmaSev, exerciseSev, maskSev, windowSev, dominantSev;
 
   if (label === "Good") {
-    severity = "low";
+    genSev = "low";
+    childSev = "low";
+    elderlySev = "low";
+    asthmaSev = "low";
+    exerciseSev = "low";
+    maskSev = "low";
+    windowSev = "low";
+    dominantSev = "low";
+
     genAdvice = "Air quality is considered satisfactory, and air pollution poses little or no risk.";
     childAdvice = "Safe for all outdoor activities, active play, and sports.";
     elderlyAdvice = "Safe to spend time outdoors and engage in regular daily routines.";
-    asthmaAdvice = "No special precautions needed; regular activities can be safely continued.";
+    asthmaAdvice = "Clean air conditions; regular activities can be safely continued.";
     exerciseAdvice = "Ideal conditions for outdoor running, cycling, and intense athletic training.";
     maskAdvice = "No mask required under current clean ambient conditions.";
     windowAdvice = "Keep windows open for natural fresh air ventilation; air purifiers are not needed.";
   } else if (label === "Satisfactory") {
-    severity = "low";
-    genAdvice = "Air quality is acceptable; unusually sensitive individuals may experience minor breathing discomfort.";
-    childAdvice = "Safe for outdoor play, but take breaks during prolonged strenuous activities.";
-    elderlyAdvice = "Generally safe for outdoor walks; monitor if any respiratory irritation occurs.";
-    asthmaAdvice = "Keep quick-relief inhalers accessible if you are sensitive to atmospheric dust.";
-    exerciseAdvice = "Outdoor exercise is generally fine; sensitive individuals should moderate exertion intensity.";
+    genSev = "low";
+    childSev = "low";
+    elderlySev = "low";
+    asthmaSev = "caution";
+    exerciseSev = "low";
+    maskSev = "low";
+    windowSev = "low";
+    dominantSev = "low";
+
+    genAdvice = "Air quality is acceptable; poses little risk for the general population.";
+    childAdvice = "Safe for outdoor play; normal activities can be maintained.";
+    elderlyAdvice = "Generally safe for outdoor walks; monitor if any mild respiratory irritation occurs.";
+    asthmaAdvice = "Unusually sensitive individuals may experience minor breathing discomfort; keep rescue inhalers accessible.";
+    exerciseAdvice = "Outdoor workouts are fine; highly sensitive individuals may moderate heavy exertion.";
     maskAdvice = "Masks are not required for the general population.";
-    windowAdvice = "Natural ventilation is fine; keep indoor living spaces dust-free.";
+    windowAdvice = "Natural ventilation is fine; keep indoor living spaces clean and ventilated.";
   } else if (label === "Moderate") {
-    severity = "medium";
-    genAdvice = "Air quality may cause breathing discomfort to people with lung disease, asthma, and heart conditions.";
-    childAdvice = "Limit prolonged outdoor exertion and take regular indoor rest breaks.";
+    genSev = "caution";
+    childSev = "caution";
+    elderlySev = "caution";
+    asthmaSev = "warning";
+    exerciseSev = "caution";
+    maskSev = "caution";
+    windowSev = "caution";
+    dominantSev = "caution";
+
+    genAdvice = "Air quality may cause minor breathing discomfort to sensitive individuals on prolonged exposure.";
+    childAdvice = "Limit prolonged heavy exertion outdoors and take frequent rest breaks.";
     elderlyAdvice = "Reduce prolonged or heavy outdoor exertion; take frequent rest intervals.";
-    asthmaAdvice = "Reduce strenuous outdoor activities, keep inhalers handy, and avoid traffic corridors.";
+    asthmaAdvice = "Reduce strenuous outdoor activities, keep inhalers handy, and avoid heavy traffic corridors.";
     exerciseAdvice = "Consider shifting intense cardio workouts indoors or to early morning hours.";
-    maskAdvice = "Sensitive individuals and elderly should wear a protective mask when outdoors.";
+    maskAdvice = "Sensitive individuals and elderly should consider wearing a protective mask in congested or dusty areas.";
     windowAdvice = "Close windows during peak traffic hours; consider running air purifiers in bedrooms.";
   } else if (label === "Poor") {
-    severity = "high";
+    genSev = "warning";
+    childSev = "danger";
+    elderlySev = "danger";
+    asthmaSev = "danger";
+    exerciseSev = "warning";
+    maskSev = "warning";
+    windowSev = "warning";
+    dominantSev = "warning";
+
     genAdvice = "Breathing discomfort to most people on prolonged exposure. Significant health risks for sensitive groups.";
     childAdvice = "Avoid prolonged outdoor play and sports; shift activities indoors.";
-    elderlyAdvice = "Avoid outdoor morning walks and any strenuous physical activity.";
-    asthmaAdvice = "Stay indoors as much as possible; strictly avoid physical exertion in ambient air.";
-    exerciseAdvice = "Avoid outdoor running and strenuous workouts; switch to indoor exercise.";
+    elderlyAdvice = "Avoid outdoor morning walks and any strenuous physical activity; remain indoors.";
+    asthmaAdvice = "High risk of respiratory distress; stay indoors, avoid physical exertion, and keep medication accessible.";
+    exerciseAdvice = "Avoid outdoor running, cycling, and strenuous workouts; switch to indoor exercise.";
     maskAdvice = "Wear a well-fitted N95 or equivalent particulate respirator when stepping outside.";
-    windowAdvice = "Keep windows closed to prevent pollutant infiltration; run air purifiers indoors.";
+    windowAdvice = "Keep windows closed to prevent pollutant infiltration; run indoor air purifiers.";
   } else if (label === "Very Poor") {
-    severity = "high";
-    genAdvice = "Respiratory illness likely on prolonged exposure. Pronounced effect on people with lung or heart conditions.";
-    childAdvice = "Strictly avoid all outdoor activities; remain indoors in clean air.";
+    genSev = "danger";
+    childSev = "danger";
+    elderlySev = "danger";
+    asthmaSev = "danger";
+    exerciseSev = "danger";
+    maskSev = "danger";
+    windowSev = "danger";
+    dominantSev = "danger";
+
+    genAdvice = "Respiratory illness likely on prolonged exposure. Significant health impact on all individuals.";
+    childAdvice = "Strictly avoid all outdoor activities; remain indoors in clean, filtered air.";
     elderlyAdvice = "Stay indoors with doors and windows shut; avoid any outdoor exposure.";
-    asthmaAdvice = "Remain strictly indoors; operate air filtration and consult your physician if symptoms worsen.";
+    asthmaAdvice = "Critical risk of acute symptoms; remain strictly indoors with air filtration and consult your doctor if symptoms worsen.";
     exerciseAdvice = "Do not exercise outdoors under any circumstances; exercise only indoors with filtered air.";
     maskAdvice = "N95 / FFP2 mask is mandatory if stepping outdoors even for brief periods.";
     windowAdvice = "Keep all windows and doors sealed; operate HEPA air purifiers continuously.";
   } else {
     // Severe
-    severity = "high";
+    genSev = "danger";
+    childSev = "danger";
+    elderlySev = "danger";
+    asthmaSev = "danger";
+    exerciseSev = "danger";
+    maskSev = "danger";
+    windowSev = "danger";
+    dominantSev = "danger";
+
     genAdvice = "Emergency health alert: affects healthy individuals and severely impacts those with pre-existing conditions.";
     childAdvice = "Emergency indoor stay required; suspend all outdoor activities and physical education.";
     elderlyAdvice = "Strict indoor confinement; avoid all physical exertion and ambient air exposure.";
@@ -258,48 +307,92 @@ function generateRecommendations(aqi, dominantKey) {
   }
 
   recommendations.push(
-    { group: "General public", advice: genAdvice, severity },
-    { group: "Children", advice: childAdvice, severity },
-    { group: "Elderly", advice: elderlyAdvice, severity },
-    { group: "People with asthma or heart disease", advice: asthmaAdvice, severity },
-    { group: "Outdoor exercise", advice: exerciseAdvice, severity },
-    { group: "Mask", advice: maskAdvice, severity },
-    { group: "Windows and air purifier", advice: windowAdvice, severity }
+    { group: "General public", advice: genAdvice, severity: genSev },
+    { group: "Children", advice: childAdvice, severity: childSev },
+    { group: "Elderly", advice: elderlyAdvice, severity: elderlySev },
+    { group: "People with asthma or heart disease", advice: asthmaAdvice, severity: asthmaSev },
+    { group: "Outdoor exercise", advice: exerciseAdvice, severity: exerciseSev },
+    { group: "Mask", advice: maskAdvice, severity: maskSev },
+    { group: "Windows and air purifier", advice: windowAdvice, severity: windowSev }
   );
 
-  // Dominant pollutant specific tip
-  const normKey = normalizePollutantKey(dominantKey);
+  // Dominant pollutant specific tip — depends on both pollutant and AQI band
+  let dominantTipAdvice = "";
+  const groupLabel = normKey ? `Dominant Pollutant Tip (${normKey})` : "Dominant Pollutant Tip";
+
   if (normKey === "PM2.5" || normKey === "PM10") {
-    recommendations.push({
-      group: "Dominant Pollutant Tip (" + normKey + ")",
-      advice: "Particulate matter is the primary driver of pollution today. Use an N95 mask and avoid dusty roadside areas and unpaved roads.",
-      severity: severity === "low" ? "low" : "high"
-    });
+    if (label === "Good") {
+      dominantTipAdvice = `${normKey} is the primary contributor today, but levels are well within safe, clean limits. No protective measures needed.`;
+    } else if (label === "Satisfactory") {
+      dominantTipAdvice = `${normKey} is the dominant pollutant today, but concentrations remain within satisfactory limits.`;
+    } else if (label === "Moderate") {
+      dominantTipAdvice = `Particulate matter (${normKey}) is elevated. Sensitive individuals should avoid dusty roadside areas and consider wearing a mask outdoors.`;
+    } else if (label === "Poor") {
+      dominantTipAdvice = `High ${normKey} particulate levels. Wear an N95 mask outdoors and avoid dusty roads and high-traffic zones.`;
+    } else if (label === "Very Poor") {
+      dominantTipAdvice = `Dangerous ${normKey} particulate concentrations. N95 mask is required for any outdoor exposure; minimize time outdoors.`;
+    } else {
+      dominantTipAdvice = `Hazardous ${normKey} particulate levels. Emergency N95/N99 protection required outdoors; remain strictly indoors with HEPA filtration.`;
+    }
   } else if (normKey === "NO2" || normKey === "CO") {
-    recommendations.push({
-      group: "Dominant Pollutant Tip (" + normKey + ")",
-      advice: "Traffic-related combustion gases are elevated. Avoid traffic-heavy roads, congested intersections, and diesel exhaust corridors.",
-      severity: severity === "low" ? "low" : "high"
-    });
+    if (label === "Good") {
+      dominantTipAdvice = `Combustion gases (${normKey}) are at safe, minimal baseline levels.`;
+    } else if (label === "Satisfactory") {
+      dominantTipAdvice = `Vehicular combustion emissions (${normKey}) are within satisfactory ambient limits.`;
+    } else if (label === "Moderate") {
+      dominantTipAdvice = `Traffic-related combustion gases (${normKey}) are elevated. Avoid heavy traffic corridors and idling vehicles.`;
+    } else if (label === "Poor") {
+      dominantTipAdvice = `High ${normKey} traffic emissions. Avoid congested intersections, highways, and diesel exhaust corridors.`;
+    } else if (label === "Very Poor") {
+      dominantTipAdvice = `Dangerous combustion gas concentrations. Strictly avoid traffic-heavy corridors and industrial zones.`;
+    } else {
+      dominantTipAdvice = `Hazardous toxic combustion gas levels. Remain indoors with sealed ventilation.`;
+    }
   } else if (normKey === "OZONE") {
-    recommendations.push({
-      group: "Dominant Pollutant Tip (Ozone)",
-      advice: "Ground-level Ozone is high. Avoid afternoon outdoor activity between 1 PM and 5 PM when solar radiation peaks ozone formation.",
-      severity: severity === "low" ? "low" : "high"
-    });
+    if (label === "Good") {
+      dominantTipAdvice = `Ground-level Ozone (O₃) is at natural, safe background levels.`;
+    } else if (label === "Satisfactory") {
+      dominantTipAdvice = `Ground-level Ozone (O₃) is within satisfactory limits.`;
+    } else if (label === "Moderate") {
+      dominantTipAdvice = `Ground-level Ozone (O₃) is elevated. Sensitive groups should reduce afternoon outdoor exertion between 1 PM and 5 PM.`;
+    } else if (label === "Poor") {
+      dominantTipAdvice = `High Ground-level Ozone (O₃). Avoid strenuous afternoon outdoor activity between 1 PM and 5 PM when solar radiation peaks ozone formation.`;
+    } else if (label === "Very Poor") {
+      dominantTipAdvice = `Dangerous Ground-level Ozone (O₃) levels. Strictly avoid outdoor exposure during peak daylight hours.`;
+    } else {
+      dominantTipAdvice = `Hazardous Ozone (O₃) alert. Complete indoor shelter advised; avoid all outdoor air intake.`;
+    }
   } else if (normKey === "SO2") {
-    recommendations.push({
-      group: "Dominant Pollutant Tip (SO2)",
-      advice: "Sulfur Dioxide levels are elevated. Avoid industrial zones, brick kilns, and thermal power plant downwind areas.",
-      severity: severity === "low" ? "low" : "high"
-    });
+    if (label === "Good") {
+      dominantTipAdvice = `Sulfur Dioxide (SO₂) is minimal and well within safe environmental limits.`;
+    } else if (label === "Satisfactory") {
+      dominantTipAdvice = `Sulfur Dioxide (SO₂) concentrations are within satisfactory thresholds.`;
+    } else if (label === "Moderate") {
+      dominantTipAdvice = `Sulfur Dioxide (SO₂) is elevated. Sensitive individuals should avoid areas near heavy industrial emissions.`;
+    } else if (label === "Poor") {
+      dominantTipAdvice = `High Sulfur Dioxide (SO₂) levels. Avoid industrial zones, brick kilns, and thermal power plant downwind areas.`;
+    } else if (label === "Very Poor") {
+      dominantTipAdvice = `Dangerous Sulfur Dioxide (SO₂) levels. Avoid all outdoor exposure near industrial sectors.`;
+    } else {
+      dominantTipAdvice = `Hazardous Sulfur Dioxide (SO₂) levels. Remain strictly indoors with sealed windows.`;
+    }
   } else {
-    recommendations.push({
-      group: "Dominant Pollutant Tip",
-      advice: "Monitor local air quality index updates and avoid peak emission hours.",
-      severity
-    });
+    if (label === "Good" || label === "Satisfactory") {
+      dominantTipAdvice = `All monitored pollutant levels are within safe, acceptable limits.`;
+    } else if (label === "Moderate") {
+      dominantTipAdvice = `Dominant pollutant is elevated; sensitive individuals should take precautions during peak hours.`;
+    } else if (label === "Poor") {
+      dominantTipAdvice = `High pollutant concentrations; wear protective masks and limit outdoor exposure.`;
+    } else {
+      dominantTipAdvice = `Severe pollutant concentrations; wear N95 respirator and remain indoors.`;
+    }
   }
+
+  recommendations.push({
+    group: groupLabel,
+    advice: dominantTipAdvice,
+    severity: dominantSev
+  });
 
   return recommendations;
 }

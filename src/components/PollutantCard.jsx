@@ -1,12 +1,12 @@
 function PollutantCard({ pollutants = {}, pollutantBreakdown = [] }) {
   // If specific pollutantBreakdown is not passed, create a default array from pollutants
   const list = pollutantBreakdown.length > 0 ? pollutantBreakdown : [
-    { name: "PM2.5", value: pollutants.pm25 || 58, safeLimit: 60, unit: "µg/m³" },
-    { name: "PM10", value: pollutants.pm10 || 112, safeLimit: 100, unit: "µg/m³" },
-    { name: "NO₂", value: pollutants.no2 || 42, safeLimit: 80, unit: "µg/m³" },
-    { name: "SO₂", value: pollutants.so2 || 15, safeLimit: 80, unit: "µg/m³" },
-    { name: "CO", value: pollutants.co || 1.2, safeLimit: 2.0, unit: "mg/m³" },
-    { name: "O₃", value: pollutants.o3 || 31, safeLimit: 100, unit: "µg/m³" }
+    { name: "PM2.5", value: pollutants.pm25 ?? 0, safeLimit: 60, unit: "µg/m³" },
+    { name: "PM10", value: pollutants.pm10 ?? 0, safeLimit: 100, unit: "µg/m³" },
+    { name: "NO₂", value: pollutants.no2 ?? 0, safeLimit: 80, unit: "µg/m³" },
+    { name: "SO₂", value: pollutants.so2 ?? 0, safeLimit: 80, unit: "µg/m³" },
+    { name: "CO", value: pollutants.co ?? 0, safeLimit: 2.0, unit: "mg/m³" },
+    { name: "O₃", value: pollutants.o3 ?? 0, safeLimit: 100, unit: "µg/m³" }
   ];
 
   const getPollutantStatus = (val, limit) => {

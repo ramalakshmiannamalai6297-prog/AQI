@@ -1,3 +1,5 @@
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const app = require("../app");
 const pool = require("../config/db");
 const alertService = require("../services/alertService");

@@ -22,11 +22,14 @@ function getGroupIcon(group) {
 }
 
 function getSeverityBadge(severity) {
-  const s = String(severity || "low").toLowerCase();
-  if (s === "critical" || s === "danger" || s === "severe") {
-    return { bg: "#fef2f2", text: "#991b1b", border: "#fecaca", label: "High Risk" };
+  const s = String(severity || "low").toLowerCase().trim();
+  if (s === "danger" || s === "critical" || s === "severe" || s === "high risk" || s === "high_risk") {
+    return { bg: "#fef2f2", text: "#991b1b", border: "#fecaca", label: "Danger" };
   }
-  if (s === "high" || s === "warning" || s === "medium") {
+  if (s === "warning" || s === "high") {
+    return { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa", label: "Warning" };
+  }
+  if (s === "caution" || s === "medium" || s === "moderate") {
     return { bg: "#fffbeb", text: "#92400e", border: "#fde68a", label: "Caution" };
   }
   return { bg: "#f0fdf4", text: "#166534", border: "#bbf7d0", label: "Safe / Low" };
