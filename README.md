@@ -1,16 +1,36 @@
-# React + Vite
+# AQI Event Detection System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based Air Quality Monitoring and Pollution Event Detection System.
 
-Currently, two official plugins are available:
+Current backend focus:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+> Fetch AQI-related pollutant data → store it safely → detect unusual pollutant spikes.
 
-## React Compiler
+## Current Backend Flow
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```text
+data.gov.in AQI API
+        ↓
+utils/apiClient.js
+        ↓
+services/aqiService.js
+        ↓
+services/ingestionService.js
+        ↓
+Group records by station + timestamp
+        ↓
+services/stationService.js
+        ↓
+Find or create station in MySQL
+        ↓
+services/readingService.js
+        ↓
+Create/reuse AQI reading
+        ↓
+Store pollutant readings
+        ↓
+services/eventService.js
+        ↓
+Compare with previous station reading
+        ↓
+Store pollution spike event if threshold is crossed
