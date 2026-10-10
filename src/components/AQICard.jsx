@@ -1,6 +1,5 @@
-import React from "react";
-import { getAQICategory } from "../data/dummyData";
-import { HiOutlineLocationMarker, HiOutlineClock, HiOutlineTrendingUp, HiOutlineShieldCheck } from "react-icons/hi";
+import { getAQICategory } from "../utils/aqi.js";
+import { HiOutlineLocationMarker, HiOutlineClock, HiOutlineTrendingUp } from "react-icons/hi";
 
 function AQICard({ data }) {
   if (!data) return null;
@@ -140,26 +139,33 @@ function AQICard({ data }) {
         </div>
 
         {/* Temperature & Humidity */}
+        {/* TODO: Connect to live weather API endpoint when backend is ready */}
         <div style={{ backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-          <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>WEATHER CONDITIONS</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>WEATHER CONDITIONS</span>
+            <span style={{ fontSize: "10px", fontWeight: "600", color: "#94a3b8", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "4px" }}>
+              Demo value
+            </span>
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
             <div>
               <span style={{ fontSize: "11px", color: "#94a3b8" }}>Temperature</span>
               <div style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>
-                {data.temperature || "26°C"}
+                {data.temperature || "24°C"}
               </div>
             </div>
             <div style={{ width: "1px", height: "30px", backgroundColor: "#e2e8f0" }} />
             <div>
               <span style={{ fontSize: "11px", color: "#94a3b8" }}>Humidity</span>
               <div style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>
-                {data.humidity || "60%"}
+                {data.humidity || "68%"}
               </div>
             </div>
           </div>
         </div>
 
         {/* Sensor Calibration & Status */}
+        {/* TODO: Connect to station diagnostic health endpoint when backend is ready */}
         <div style={{ backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
           <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>STATION HEALTH</span>
           <div style={{ marginTop: "6px" }}>

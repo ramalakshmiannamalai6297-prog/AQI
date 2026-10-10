@@ -1,11 +1,70 @@
-import React from "react";
-import HotspotCard from "../components/HotspotCard";
-import { sensorLocations, getAQICategory } from "../data/dummyData";
+import { useState, useEffect } from "react";
+import { sensorLocations } from "../data/dummyData";
+import { getAQICategory } from "../utils/aqi.js";
+import { getHotspots } from "../services/api";
+import { mapBackendHotspot } from "../services/mappers";
+import { LoadingSpinner, ErrorMessage } from "../components/StatusState";
 import { Link } from "react-router-dom";
-import { HiOutlineFire, HiOutlineLocationMarker, HiOutlineArrowRight } from "react-icons/hi";
+import { HiOutlineFire, HiOutlineArrowRight, HiOutlineTrendingUp } from "react-icons/hi";
 
 function Hotspots() {
-  const sortedSensors = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
+  const [hotspots, setHotspots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchHotspotsList = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getHotspots(10);
+      if (res && Array.isArray(res.hotspots) && res.hotspots.length > 0) {
+        const mapped = res.hotspots.map((h) => mapBackendHotspot(h, sensorLocations));
+        setHotspots(mapped);
+      } else {
+        const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
+        setHotspots(fallback);
+      }
+    } catch (err) {
+      console.error("Hotspots: Error fetching hotspots from backend:", err);
+      setError("Could not reach the server");
+      const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
+      setHotspots(fallback);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await getHotspots(10);
+        if (!ignore) {
+          if (res && Array.isArray(res.hotspots) && res.hotspots.length > 0) {
+            const mapped = res.hotspots.map((h) => mapBackendHotspot(h, sensorLocations));
+            setHotspots(mapped);
+          } else {
+            const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
+            setHotspots(fallback);
+          }
+          setError(null);
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.error("Hotspots: Error fetching hotspots from backend:", err);
+          setError("Could not reach the server");
+          const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
+          setHotspots(fallback);
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "20px 24px" }}>
@@ -17,16 +76,30 @@ function Hotspots() {
           National Air Pollution Hotspots Ranking 🔥
         </h1>
         <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-          Ranked list of continuous air quality monitoring stations from highest to lowest AQI index.
+          Real-time detected pollution surges and continuous air monitoring hotspots across India.
         </p>
       </div>
 
+      {error && (
+        <ErrorMessage
+          message={error}
+          subtext="Unable to reach Express backend at http://localhost:3000. Displaying cached hotspot records."
+          onRetry={fetchHotspotsList}
+        />
+      )}
+
+      {loading && (
+        <div style={{ marginBottom: "24px" }}>
+          <LoadingSpinner message="Querying continuous air quality network for pollution hotspots..." />
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
-        {sortedSensors.map((sensor, index) => {
+        {hotspots.map((sensor, index) => {
           const cat = getAQICategory(sensor.aqi);
           return (
             <div
-              key={sensor.id}
+              key={`${sensor.id}-${index}`}
               style={{
                 backgroundColor: "#ffffff",
                 borderRadius: "16px",
@@ -61,7 +134,9 @@ function Hotspots() {
                       <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "#0f172a" }}>
                         {sensor.city}
                       </h3>
-                      <span style={{ fontSize: "12px", color: "#64748b" }}>{sensor.state}</span>
+                      <span style={{ fontSize: "12px", color: "#64748b" }}>
+                        {sensor.station || sensor.state}
+                      </span>
                     </div>
                   </div>
 
@@ -79,6 +154,32 @@ function Hotspots() {
                     {sensor.category}
                   </span>
                 </div>
+
+                {/* Spiked Pollutant Badge if from live hotspot backend */}
+                {sensor.pollutantId && (
+                  <div
+                    style={{
+                      backgroundColor: "#fff1f2",
+                      border: "1px solid #fecdd3",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      marginBottom: "12px",
+                      fontSize: "12px",
+                      color: "#9f1239",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between"
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontWeight: "700" }}>
+                      <HiOutlineTrendingUp size={16} color="#e11d48" />
+                      {sensor.pollutantId} Surge
+                    </span>
+                    <span style={{ fontWeight: "700" }}>
+                      +{Number(sensor.changePercentage).toFixed(1)}% ({sensor.previousValue} → {sensor.currentValue})
+                    </span>
+                  </div>
+                )}
 
                 <div
                   style={{

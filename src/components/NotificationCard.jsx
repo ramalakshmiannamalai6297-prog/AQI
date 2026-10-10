@@ -1,30 +1,73 @@
-import React from "react";
+import { useState, useEffect } from "react";
+import { getEvents } from "../services/api";
+import { mapBackendEvent } from "../services/mappers";
+import { LoadingSpinner, ErrorMessage } from "./StatusState";
 import { HiOutlineBell, HiOutlineExclamation, HiOutlineInformationCircle, HiOutlineClock } from "react-icons/hi";
 
-function NotificationCard() {
-  const alerts = [
-    {
-      id: 1,
-      type: "danger",
-      title: "Severe Air Quality Emergency in Patna & Delhi NCR",
-      time: "10 mins ago",
-      message: "AQI levels have surged past 380+ due to stagnant meteorological conditions and thermal inversion. Vulnerable groups must stay indoors."
-    },
-    {
-      id: 2,
-      type: "warning",
-      title: "PM2.5 Spike Detected in Kolkata & Lucknow",
-      time: "25 mins ago",
-      message: "Fine particulate matter (PM2.5) concentrations have crossed 180 µg/m³ (3x NAAQS limit). Anti-pollution measures active."
-    },
-    {
-      id: 3,
-      type: "info",
-      title: "Southern Region Air Quality Remains Clean",
-      time: "1 hour ago",
-      message: "Bengaluru, Kochi, and Chennai continue to record 'Good' to 'Satisfactory' AQI under active coastal breeze circulation."
+const DEFAULT_ALERTS = [
+  {
+    id: 1,
+    type: "danger",
+    title: "Severe Air Quality Emergency in Patna & Delhi NCR",
+    time: "10 mins ago",
+    message: "AQI levels have surged past 380+ due to stagnant meteorological conditions and thermal inversion. Vulnerable groups must stay indoors."
+  },
+  {
+    id: 2,
+    type: "warning",
+    title: "PM2.5 Spike Detected in Kolkata & Lucknow",
+    time: "25 mins ago",
+    message: "Fine particulate matter (PM2.5) concentrations have crossed 180 µg/m³ (3x NAAQS limit). Anti-pollution measures active."
+  },
+  {
+    id: 3,
+    type: "info",
+    title: "Southern Region Air Quality Remains Clean",
+    time: "1 hour ago",
+    message: "Bengaluru, Kochi, and Chennai continue to record 'Good' to 'Satisfactory' AQI under active coastal breeze circulation."
+  }
+];
+
+function NotificationCard({ events: propEvents = null }) {
+  const [fetchedAlerts, setFetchedAlerts] = useState([]);
+  const [loading, setLoading] = useState(!propEvents);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (propEvents) return;
+
+    let isMounted = true;
+    async function loadAlerts() {
+      try {
+        const res = await getEvents(10);
+        if (isMounted) {
+          if (res && Array.isArray(res.events) && res.events.length > 0) {
+            setFetchedAlerts(res.events.map(mapBackendEvent));
+          } else {
+            setFetchedAlerts(DEFAULT_ALERTS);
+          }
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error("NotificationCard: Could not reach server:", err);
+          setError("Could not reach the server");
+          setFetchedAlerts(DEFAULT_ALERTS);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     }
-  ];
+
+    loadAlerts();
+    return () => {
+      isMounted = false;
+    };
+  }, [propEvents]);
+
+  const alerts = propEvents && propEvents.length > 0
+    ? propEvents.map((e) => (e.title ? e : mapBackendEvent(e)))
+    : (fetchedAlerts.length > 0 ? fetchedAlerts : DEFAULT_ALERTS);
 
   const getTypeStyles = (type) => {
     switch (type) {
@@ -67,10 +110,21 @@ function NotificationCard() {
             🔔 Live Environmental Alerts
           </h3>
           <p style={{ fontSize: "13px", color: "#64748b", margin: "2px 0 0" }}>
-            Automated threshold triggers & regional advisory notices
+            Automated threshold triggers & regional advisory notices from CAAQMS event engine
           </p>
         </div>
       </div>
+
+      {error && (
+        <ErrorMessage
+          message={error}
+          subtext="Showing standard advisory notices."
+        />
+      )}
+
+      {loading && (
+        <LoadingSpinner message="Checking active pollution spike events..." />
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {alerts.map((alert) => {

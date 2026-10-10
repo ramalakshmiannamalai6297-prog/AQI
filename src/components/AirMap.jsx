@@ -1,14 +1,13 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
-import { sensorLocations, AQI_CATEGORIES, getAQICategory } from "../data/dummyData";
+import { sensorLocations, AQI_CATEGORIES } from "../data/dummyData";
+import { getAQICategory } from "../utils/aqi.js";
 import { 
   HiOutlineLocationMarker, 
   HiOutlineArrowRight, 
-  HiOutlineSearch, 
-  HiOutlineRefresh,
-  HiOutlineSparkles
+  HiOutlineSearch
 } from "react-icons/hi";
 
 // Create custom colored DivIcon with the AQI number inside
@@ -29,7 +28,7 @@ const createAQIIcon = (aqi, categoryColor) => {
 // Component to handle programmatic map view changes (flyTo)
 function MapController({ selectedCoords }) {
   const map = useMap();
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedCoords) {
       map.flyTo(selectedCoords, 10, { duration: 1.5 });
     }
@@ -37,26 +36,28 @@ function MapController({ selectedCoords }) {
   return null;
 }
 
-function AirMap({ onSelectCity }) {
+function AirMap({ onSelectCity, stations = null }) {
   const navigate = useNavigate();
-  const [selectedCityId, setSelectedCityId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [flyCoords, setFlyCoords] = useState(null);
 
+  // Use live stations if provided, fallback to dummy sensorLocations
+  const activeSensors = (stations && stations.length > 0) ? stations : sensorLocations;
+
   // Filter cities based on search term and category
-  const filteredLocations = sensorLocations.filter((sensor) => {
+  const filteredLocations = activeSensors.filter((sensor) => {
+    const stationName = sensor.station || sensor.stationName || "";
     const matchesSearch =
       sensor.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sensor.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sensor.station.toLowerCase().includes(searchTerm.toLowerCase());
+      stationName.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (activeFilter === "ALL") return matchesSearch;
     return matchesSearch && sensor.category.toUpperCase() === activeFilter;
   });
 
   const handleCitySelect = (sensor) => {
-    setSelectedCityId(sensor.id);
     setFlyCoords([sensor.latitude, sensor.longitude]);
     if (onSelectCity) {
       onSelectCity(sensor);
@@ -159,7 +160,7 @@ function AirMap({ onSelectCity }) {
               transition: "all 0.2s"
             }}
           >
-            All ({sensorLocations.length})
+            All ({activeSensors.length})
           </button>
           {Object.entries(AQI_CATEGORIES).map(([key, cat]) => (
             <button

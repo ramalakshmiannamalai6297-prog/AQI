@@ -1,5 +1,3 @@
-import React from "react";
-
 function PollutantCard({ pollutants = {}, pollutantBreakdown = [] }) {
   // If specific pollutantBreakdown is not passed, create a default array from pollutants
   const list = pollutantBreakdown.length > 0 ? pollutantBreakdown : [
@@ -7,7 +5,7 @@ function PollutantCard({ pollutants = {}, pollutantBreakdown = [] }) {
     { name: "PM10", value: pollutants.pm10 || 112, safeLimit: 100, unit: "µg/m³" },
     { name: "NO₂", value: pollutants.no2 || 42, safeLimit: 80, unit: "µg/m³" },
     { name: "SO₂", value: pollutants.so2 || 15, safeLimit: 80, unit: "µg/m³" },
-    { name: "CO", value: pollutants.co ? pollutants.co * 10 : 12, safeLimit: 20, unit: "0.1mg/m³" },
+    { name: "CO", value: pollutants.co || 1.2, safeLimit: 2.0, unit: "mg/m³" },
     { name: "O₃", value: pollutants.o3 || 31, safeLimit: 100, unit: "µg/m³" }
   ];
 
@@ -39,8 +37,14 @@ function PollutantCard({ pollutants = {}, pollutantBreakdown = [] }) {
         }}
       >
         {list.map((item) => {
-          const status = getPollutantStatus(item.value, item.safeLimit);
-          const percentOfLimit = Math.min(Math.round((item.value / item.safeLimit) * 100), 200);
+          const rawVal = Number(item.value ?? 0);
+          const limit = Number(item.safeLimit ?? 100);
+          const status = getPollutantStatus(rawVal, limit);
+          const percentOfLimit = Math.min(Math.round((rawVal / limit) * 100), 200);
+
+          const formattedVal = item.name === "CO" 
+            ? rawVal.toFixed(1) 
+            : Math.round(rawVal);
 
           return (
             <div
@@ -85,10 +89,10 @@ function PollutantCard({ pollutants = {}, pollutantBreakdown = [] }) {
               {/* Concentration value */}
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "10px" }}>
                 <span style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", lineHeight: 1 }}>
-                  {item.name === "CO" ? (item.value / 10).toFixed(1) : item.value}
+                  {formattedVal}
                 </span>
                 <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "500" }}>
-                  {item.name === "CO" ? "mg/m³" : item.unit}
+                  {item.unit || "µg/m³"}
                 </span>
               </div>
 
@@ -109,7 +113,7 @@ function PollutantCard({ pollutants = {}, pollutantBreakdown = [] }) {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#94a3b8" }}>
                 <span>Safe Limit:</span>
                 <span style={{ fontWeight: "600", color: "#64748b" }}>
-                  {item.name === "CO" ? `${(item.safeLimit / 10)} mg/m³` : `${item.safeLimit} ${item.unit}`}
+                  {item.safeLimit} {item.unit || "µg/m³"}
                 </span>
               </div>
             </div>

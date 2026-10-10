@@ -1,19 +1,24 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { sensorLocations, getAQICategory } from "../data/dummyData";
+import { sensorLocations } from "../data/dummyData";
+import { getAQICategory } from "../utils/aqi.js";
 import { HiOutlineSearch, HiOutlineLocationMarker } from "react-icons/hi";
 
-function SearchBar({ onSelectCity }) {
+function SearchBar({ onSelectCity, stations = null }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
-  const results = sensorLocations.filter(
-    (s) =>
+  const activeSensors = (stations && stations.length > 0) ? stations : sensorLocations;
+
+  const results = activeSensors.filter((s) => {
+    const stationName = s.station || s.stationName || "";
+    return (
       s.city.toLowerCase().includes(query.toLowerCase()) ||
       s.state.toLowerCase().includes(query.toLowerCase()) ||
-      s.station.toLowerCase().includes(query.toLowerCase())
-  );
+      stationName.toLowerCase().includes(query.toLowerCase())
+    );
+  });
 
   const handleSelect = (sensor) => {
     setQuery("");

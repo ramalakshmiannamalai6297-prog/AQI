@@ -1,7 +1,7 @@
-import React from "react";
-import { HiOutlineSparkles, HiOutlineTrendingUp, HiOutlineTrendingDown, HiOutlineLightningBolt } from "react-icons/hi";
+import { HiOutlineSparkles, HiOutlineTrendingUp, HiOutlineTrendingDown } from "react-icons/hi";
 
-function PredictionCard({ city = "Delhi", baseAQI = 382 }) {
+// TODO: ML prediction endpoint not yet in backend; keeping dummy forecast
+function PredictionCard({ city = "Delhi", baseAQI = 382 }) { // TODO: real AQI
   const predictions = [
     { time: "+1 Hour", expectedAQI: Math.round(baseAQI * 1.04), change: "+4%", trend: "up", condition: "Stagnant Wind Speed" },
     { time: "+3 Hours", expectedAQI: Math.round(baseAQI * 1.12), change: "+12%", trend: "up", condition: "Peak Traffic Influx" },

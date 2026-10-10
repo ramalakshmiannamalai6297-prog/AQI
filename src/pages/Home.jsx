@@ -1,24 +1,86 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AirMap from "../components/AirMap";
-import { sensorLocations, getAQICategory } from "../data/dummyData";
+import { sensorLocations } from "../data/dummyData";
+import { getAQICategory } from "../utils/aqi.js";
+import { getStations } from "../services/api";
+import { mapBackendStationToFrontend } from "../services/mappers";
+import { LoadingSpinner, ErrorMessage } from "../components/StatusState";
 import { 
   HiOutlineSparkles, 
-  HiOutlineLocationMarker, 
   HiOutlineShieldExclamation, 
   HiOutlineCheckCircle, 
-  HiOutlineTrendingUp,
   HiOutlineArrowRight
 } from "react-icons/hi";
 
 function Home() {
-  // Quick summary computations
-  const totalSensors = sensorLocations.length;
-  const avgAQI = Math.round(
-    sensorLocations.reduce((acc, s) => acc + s.aqi, 0) / totalSensors
-  );
-  const mostPolluted = [...sensorLocations].sort((a, b) => b.aqi - a.aqi)[0];
-  const cleanest = [...sensorLocations].sort((a, b) => a.aqi - b.aqi)[0];
+  const [stations, setStations] = useState(sensorLocations);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchStationData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getStations();
+      if (data && Array.isArray(data.stations) && data.stations.length > 0) {
+        const mapped = data.stations.map((s) => mapBackendStationToFrontend(s, sensorLocations));
+        setStations(mapped);
+      } else {
+        setStations(sensorLocations);
+      }
+    } catch (err) {
+      console.error("Home: Error reaching backend for stations:", err);
+      setError("Could not reach the server");
+      setStations(sensorLocations);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let ignore = false;
+    async function loadStations() {
+      try {
+        const data = await getStations();
+        if (!ignore) {
+          if (data && Array.isArray(data.stations) && data.stations.length > 0) {
+            const mapped = data.stations.map((s) => mapBackendStationToFrontend(s, sensorLocations));
+            setStations(mapped);
+          } else {
+            setStations(sensorLocations);
+          }
+          setError(null);
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.error("Home: Error reaching backend for stations:", err);
+          setError("Could not reach the server");
+          setStations(sensorLocations);
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+    loadStations();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  // Summary computations from active stations with real CPCB AQI values
+  const totalSensors = stations.length;
+  const avgAQI = totalSensors > 0
+    ? Math.round(stations.reduce((acc, s) => acc + (s.aqi || 0), 0) / totalSensors)
+    : 100;
+  const mostPolluted = totalSensors > 0
+    ? [...stations].sort((a, b) => b.aqi - a.aqi)[0]
+    : sensorLocations[0];
+  const cleanest = totalSensors > 0
+    ? [...stations].sort((a, b) => a.aqi - b.aqi)[0]
+    : sensorLocations[0];
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "20px 24px" }}>
@@ -67,7 +129,7 @@ function Home() {
             India Real-Time AQI & Air Quality Map 🇮🇳
           </h1>
           <p style={{ fontSize: "15px", color: "#64748b", margin: "6px 0 0" }}>
-            Interactive geospatial monitoring across 20 major Indian urban centers. Click any marker to view sensor telemetry and launch full diagnostic analysis.
+            Interactive geospatial monitoring across 20 major Indian urban centers. Connected to real-time telemetry stream.
           </p>
         </div>
 
@@ -93,6 +155,22 @@ function Home() {
           <HiOutlineArrowRight size={16} />
         </Link>
       </div>
+
+      {/* Error state if server is offline */}
+      {error && (
+        <ErrorMessage
+          message={error}
+          subtext="Unable to reach Express backend at http://localhost:3000. Displaying cached station telemetry."
+          onRetry={fetchStationData}
+        />
+      )}
+
+      {/* Loading state indicator */}
+      {loading && (
+        <div style={{ marginBottom: "20px" }}>
+          <LoadingSpinner message="Syncing with CAAQMS national monitoring stations..." />
+        </div>
+      )}
 
       {/* Network Stats Cards */}
       <div
@@ -120,8 +198,8 @@ function Home() {
             <span style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a" }}>
               {totalSensors} <span style={{ fontSize: "14px", fontWeight: "500", color: "#64748b" }}>Stations</span>
             </span>
-            <span style={{ color: "#10b981", fontSize: "12px", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
-              <span className="pulse-dot" style={{ width: "6px", height: "6px" }} /> 100% Online
+            <span style={{ color: error ? "#f59e0b" : "#10b981", fontSize: "12px", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
+              <span className="pulse-dot" style={{ width: "6px", height: "6px" }} /> {error ? "Offline Mode" : "100% Online"}
             </span>
           </div>
           <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0" }}>
@@ -160,7 +238,7 @@ function Home() {
             </span>
           </div>
           <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0" }}>
-            Weighted mean across 20 metro nodes
+            Weighted mean across continuous nodes
           </p>
         </div>
 
@@ -222,7 +300,7 @@ function Home() {
       </div>
 
       {/* Main Interactive Map Component */}
-      <AirMap />
+      <AirMap stations={stations} />
 
       {/* Quick City Selector Bar Below Map */}
       <div style={{ marginTop: "32px" }}>
@@ -244,7 +322,7 @@ function Home() {
             gap: "14px"
           }}
         >
-          {sensorLocations.slice(0, 10).map((sensor) => {
+          {stations.slice(0, 10).map((sensor) => {
             const cat = getAQICategory(sensor.aqi);
             return (
               <Link
@@ -309,7 +387,7 @@ function Home() {
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#64748b", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #f1f5f9" }}>
                   <span>PM2.5: <strong>{sensor.pm25}</strong></span>
                   <span>PM10: <strong>{sensor.pm10}</strong></span>
-                  <span>{sensor.temperature}</span>
+                  <span>{sensor.temperature || "Live"}</span>
                 </div>
               </Link>
             );

@@ -1,8 +1,8 @@
-import React from "react";
 import { getHealthAdvice } from "../data/dummyData";
 import { HiOutlineHeart, HiOutlineSun, HiOutlineShieldCheck, HiOutlineExclamationCircle } from "react-icons/hi";
 
-function RecommendationCard({ aqi = 150, healthAdvice }) {
+// TODO: health advice endpoint not in backend; keeping dummy recommendations
+function RecommendationCard({ aqi = 150, healthAdvice }) { // TODO: real AQI
   const advice = healthAdvice || getHealthAdvice(aqi);
 
   return (

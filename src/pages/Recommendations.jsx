@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import RecommendationCard from "../components/RecommendationCard";
 import { sensorLocations, AQI_CATEGORIES } from "../data/dummyData";
 import { HiOutlineLightBulb, HiOutlineLocationMarker } from "react-icons/hi";
 
+// TODO: Recommendations stays on dummy data until health recommendations endpoint is implemented in the backend
 function Recommendations() {
   const [selectedCityId, setSelectedCityId] = useState("delhi-anand-vihar");
+  // TODO: real AQI
   const selectedSensor = sensorLocations.find((s) => s.id === selectedCityId) || sensorLocations[0];
 
   return (

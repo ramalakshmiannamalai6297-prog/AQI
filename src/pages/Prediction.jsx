@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import PredictionCard from "../components/PredictionCard";
 import { sensorLocations } from "../data/dummyData";
 import { HiOutlineSparkles, HiOutlineLocationMarker } from "react-icons/hi";
 
+// TODO: Prediction stays on dummy data until ML forecast endpoint is implemented in the backend
 function Prediction() {
   const [selectedCityId, setSelectedCityId] = useState("delhi-anand-vihar");
+  // TODO: real AQI & telemetry data
   const selectedSensor = sensorLocations.find((s) => s.id === selectedCityId) || sensorLocations[0];
 
   return (

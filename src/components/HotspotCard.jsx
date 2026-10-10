@@ -1,13 +1,53 @@
-import React from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { sensorLocations, getAQICategory } from "../data/dummyData";
+import { sensorLocations } from "../data/dummyData";
+import { getAQICategory } from "../utils/aqi.js";
+import { getHotspots } from "../services/api";
+import { mapBackendHotspot } from "../services/mappers";
+import { LoadingSpinner, ErrorMessage } from "./StatusState";
 import { HiOutlineFire, HiOutlineArrowRight } from "react-icons/hi";
 
-function HotspotCard({ limit = 5 }) {
-  // Sort locations by AQI descending to get top hotspots
-  const hotspots = [...sensorLocations]
-    .sort((a, b) => b.aqi - a.aqi)
-    .slice(0, limit);
+function HotspotCard({ limit = 5, hotspots: propHotspots = null }) {
+  const [fetchedHotspots, setFetchedHotspots] = useState([]);
+  const [loading, setLoading] = useState(!propHotspots);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (propHotspots) return;
+
+    let isMounted = true;
+    async function loadHotspots() {
+      try {
+        const res = await getHotspots(limit);
+        if (isMounted) {
+          if (res && Array.isArray(res.hotspots) && res.hotspots.length > 0) {
+            const mapped = res.hotspots.map((h) => mapBackendHotspot(h, sensorLocations)).slice(0, limit);
+            setFetchedHotspots(mapped);
+          } else {
+            const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi).slice(0, limit);
+            setFetchedHotspots(fallback);
+          }
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error("HotspotCard: Error fetching hotspots:", err);
+          setError("Could not reach the server");
+          const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi).slice(0, limit);
+          setFetchedHotspots(fallback);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadHotspots();
+    return () => {
+      isMounted = false;
+    };
+  }, [propHotspots, limit]);
+
+  const hotspots = propHotspots || (fetchedHotspots.length > 0 ? fetchedHotspots : [...sensorLocations].sort((a, b) => b.aqi - a.aqi).slice(0, limit));
 
   return (
     <div
@@ -40,7 +80,7 @@ function HotspotCard({ limit = 5 }) {
               🚨 National Pollution Hotspots
             </h3>
             <p style={{ fontSize: "13px", color: "#64748b", margin: "2px 0 0" }}>
-              Highest AQI recorded across continuous air monitoring stations
+              Highest pollution changes detected across continuous monitoring stations
             </p>
           </div>
         </div>
@@ -60,12 +100,23 @@ function HotspotCard({ limit = 5 }) {
         </Link>
       </div>
 
+      {error && (
+        <ErrorMessage
+          message={error}
+          subtext="Showing fallback hotspot telemetry."
+        />
+      )}
+
+      {loading && (
+        <LoadingSpinner message="Scanning CAAQMS for pollution hotspots..." />
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         {hotspots.map((sensor, index) => {
           const cat = getAQICategory(sensor.aqi);
           return (
             <Link
-              key={sensor.id}
+              key={`${sensor.id}-${index}`}
               to={`/dashboard?city=${sensor.id}`}
               style={{
                 display: "flex",
