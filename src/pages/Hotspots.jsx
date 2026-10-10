@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { sensorLocations } from "../data/dummyData";
 import { getAQICategory } from "../utils/aqi.js";
 import { getHotspots } from "../services/api";
 import { mapBackendHotspot } from "../services/mappers";
 import { LoadingSpinner, ErrorMessage } from "../components/StatusState";
 import { Link } from "react-router-dom";
-import { HiOutlineFire, HiOutlineArrowRight, HiOutlineTrendingUp } from "react-icons/hi";
+import { HiOutlineFire, HiOutlineArrowRight, HiOutlineTrendingUp, HiOutlineShieldCheck } from "react-icons/hi";
 
 function Hotspots() {
   const [hotspots, setHotspots] = useState([]);
@@ -17,18 +16,16 @@ function Hotspots() {
     setError(null);
     try {
       const res = await getHotspots(10);
-      if (res && Array.isArray(res.hotspots) && res.hotspots.length > 0) {
-        const mapped = res.hotspots.map((h) => mapBackendHotspot(h, sensorLocations));
+      if (res && Array.isArray(res.hotspots)) {
+        const mapped = res.hotspots.map(mapBackendHotspot);
         setHotspots(mapped);
       } else {
-        const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
-        setHotspots(fallback);
+        setHotspots([]);
       }
     } catch (err) {
       console.error("Hotspots: Error fetching hotspots from backend:", err);
-      setError("Could not reach the server");
-      const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
-      setHotspots(fallback);
+      setError("Could not reach the server to load pollution hotspots.");
+      setHotspots([]);
     } finally {
       setLoading(false);
     }
@@ -40,21 +37,19 @@ function Hotspots() {
       try {
         const res = await getHotspots(10);
         if (!ignore) {
-          if (res && Array.isArray(res.hotspots) && res.hotspots.length > 0) {
-            const mapped = res.hotspots.map((h) => mapBackendHotspot(h, sensorLocations));
+          if (res && Array.isArray(res.hotspots)) {
+            const mapped = res.hotspots.map(mapBackendHotspot);
             setHotspots(mapped);
           } else {
-            const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
-            setHotspots(fallback);
+            setHotspots([]);
           }
           setError(null);
         }
       } catch (err) {
         if (!ignore) {
           console.error("Hotspots: Error fetching hotspots from backend:", err);
-          setError("Could not reach the server");
-          const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi);
-          setHotspots(fallback);
+          setError("Could not reach the server to load pollution hotspots.");
+          setHotspots([]);
         }
       } finally {
         if (!ignore) setLoading(false);
@@ -83,7 +78,7 @@ function Hotspots() {
       {error && (
         <ErrorMessage
           message={error}
-          subtext="Unable to reach Express backend at http://localhost:3000. Displaying cached hotspot records."
+          subtext="Unable to reach Express backend at http://localhost:3000."
           onRetry={fetchHotspotsList}
         />
       )}
@@ -91,6 +86,27 @@ function Hotspots() {
       {loading && (
         <div style={{ marginBottom: "24px" }}>
           <LoadingSpinner message="Querying continuous air quality network for pollution hotspots..." />
+        </div>
+      )}
+
+      {!loading && hotspots.length === 0 && !error && (
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            padding: "36px 24px",
+            textAlign: "center",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+          }}
+        >
+          <HiOutlineShieldCheck size={36} color="#10b981" style={{ margin: "0 auto 10px" }} />
+          <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a", margin: "0 0 6px" }}>
+            No Active Pollution Surges
+          </h3>
+          <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
+            No sudden pollutant spikes exceeding threshold are currently recorded across the monitoring network.
+          </p>
         </div>
       )}
 

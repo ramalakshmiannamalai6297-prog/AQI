@@ -1,9 +1,41 @@
 import { getAQICategory } from "../utils/aqi.js";
-import { HiOutlineLocationMarker, HiOutlineClock, HiOutlineTrendingUp } from "react-icons/hi";
+import { 
+  HiOutlineLocationMarker, 
+  HiOutlineClock, 
+  HiOutlineTrendingUp,
+  HiOutlineTrendingDown,
+  HiOutlineMinusSm
+} from "react-icons/hi";
 
-function AQICard({ data }) {
+function AQICard({ data, weather = null, health = null }) {
   if (!data) return null;
   const categoryInfo = getAQICategory(data.aqi);
+
+  // Weather formatting
+  const weatherAvailable = weather && weather.available;
+  const tempDisplay = weatherAvailable 
+    ? `${weather.temperature}${weather.temperatureUnit || "°C"}`
+    : (data.temperature ? data.temperature : "Unavailable");
+  const humidityDisplay = weatherAvailable
+    ? `${weather.humidity}${weather.humidityUnit || "%"}`
+    : (data.humidity ? data.humidity : "Unavailable");
+
+  // Health formatting
+  const stationStatus = health?.status || data.sensorStatus || "Unavailable";
+  const getStatusColor = (status) => {
+    const s = String(status || "").toLowerCase();
+    if (s === "online") return { color: "#059669", dot: "#10b981", bg: "#ecfdf5" };
+    if (s === "delayed") return { color: "#d97706", dot: "#f59e0b", bg: "#fffbeb" };
+    if (s === "offline") return { color: "#dc2626", dot: "#ef4444", bg: "#fef2f2" };
+    return { color: "#64748b", dot: "#94a3b8", bg: "#f1f5f9" };
+  };
+  const statusStyle = getStatusColor(stationStatus);
+
+  const healthDetail = health?.minutesSinceUpdate !== null && health?.minutesSinceUpdate !== undefined
+    ? (health.minutesSinceUpdate < 60 
+        ? `Last telemetry ${health.minutesSinceUpdate} min${health.minutesSinceUpdate === 1 ? "" : "s"} ago` 
+        : `Last telemetry ${Math.floor(health.minutesSinceUpdate / 60)} hr${Math.floor(health.minutesSinceUpdate / 60) === 1 ? "" : "s"} ago`)
+    : "Live telemetry tracking";
 
   return (
     <div
@@ -63,7 +95,7 @@ function AQICard({ data }) {
             {data.city}
           </h2>
           <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-            {data.station}
+            {data.station || data.stationName}
           </p>
         </div>
 
@@ -121,7 +153,7 @@ function AQICard({ data }) {
             }}
           >
             <span style={{ fontSize: "36px", fontWeight: "900", color: categoryInfo.color, lineHeight: 1 }}>
-              {data.aqi}
+              {data.aqi !== null && data.aqi !== undefined ? data.aqi : "—"}
             </span>
             <span style={{ fontSize: "10px", fontWeight: "700", color: categoryInfo.text, textTransform: "uppercase" }}>
               AQI-IN
@@ -138,43 +170,51 @@ function AQICard({ data }) {
           </div>
         </div>
 
-        {/* Temperature & Humidity */}
-        {/* TODO: Connect to live weather API endpoint when backend is ready */}
+        {/* Temperature & Humidity from Open-Meteo */}
         <div style={{ backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>WEATHER CONDITIONS</span>
-            <span style={{ fontSize: "10px", fontWeight: "600", color: "#94a3b8", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "4px" }}>
-              Demo value
-            </span>
+            {weatherAvailable && (
+              <span style={{ fontSize: "10px", fontWeight: "600", color: "#059669", backgroundColor: "#ecfdf5", padding: "1px 6px", borderRadius: "4px" }}>
+                Live
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
             <div>
               <span style={{ fontSize: "11px", color: "#94a3b8" }}>Temperature</span>
               <div style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>
-                {data.temperature || "24°C"}
+                {tempDisplay}
               </div>
             </div>
             <div style={{ width: "1px", height: "30px", backgroundColor: "#e2e8f0" }} />
             <div>
               <span style={{ fontSize: "11px", color: "#94a3b8" }}>Humidity</span>
               <div style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>
-                {data.humidity || "68%"}
+                {humidityDisplay}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Sensor Calibration & Status */}
-        {/* TODO: Connect to station diagnostic health endpoint when backend is ready */}
+        {/* Station Diagnostic Health */}
         <div style={{ backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
           <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>STATION HEALTH</span>
           <div style={{ marginTop: "6px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#059669", fontWeight: "700", fontSize: "15px" }}>
-              <span className="pulse-dot" />
-              {data.sensorStatus || "Online"}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: statusStyle.color, fontWeight: "700", fontSize: "15px" }}>
+              <span 
+                style={{ 
+                  width: "8px", 
+                  height: "8px", 
+                  borderRadius: "50%", 
+                  backgroundColor: statusStyle.dot,
+                  display: "inline-block" 
+                }} 
+              />
+              {stationStatus}
             </div>
             <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px", display: "block" }}>
-              CPCB Certified Optical Sensor
+              {healthDetail}
             </span>
           </div>
         </div>

@@ -1,13 +1,91 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import RecommendationCard from "../components/RecommendationCard";
-import { sensorLocations, AQI_CATEGORIES } from "../data/dummyData";
-import { HiOutlineLightBulb, HiOutlineLocationMarker } from "react-icons/hi";
+import { getStations, getStationRecommendations } from "../services/api";
+import { AQI_CATEGORIES } from "../utils/aqi";
+import { LoadingSpinner, ErrorMessage } from "../components/StatusState";
+import { HiOutlineLightBulb, HiOutlineLocationMarker, HiOutlineRefresh } from "react-icons/hi";
 
-// TODO: Recommendations stays on dummy data until health recommendations endpoint is implemented in the backend
 function Recommendations() {
-  const [selectedCityId, setSelectedCityId] = useState("delhi-anand-vihar");
-  // TODO: real AQI
-  const selectedSensor = sensorLocations.find((s) => s.id === selectedCityId) || sensorLocations[0];
+  const [stations, setStations] = useState([]);
+  const [selectedStationId, setSelectedStationId] = useState("");
+  const [recommendationData, setRecommendationData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // 1. Fetch available stations from backend
+  useEffect(() => {
+    let ignore = false;
+    async function loadStations() {
+      try {
+        const res = await getStations();
+        if (!ignore) {
+          if (res && Array.isArray(res.stations) && res.stations.length > 0) {
+            setStations(res.stations);
+            setSelectedStationId(String(res.stations[0].stationId));
+          }
+          setError(null);
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.error("Recommendations: Error fetching stations:", err);
+          setError("Could not reach backend server to load monitoring stations.");
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    loadStations();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  // 2. Fetch recommendations whenever selectedStationId changes
+  useEffect(() => {
+    if (!selectedStationId) return;
+
+    let ignore = false;
+    async function loadRecs() {
+      setRecsLoading(true);
+      setError(null);
+      try {
+        const data = await getStationRecommendations(selectedStationId);
+        if (!ignore) {
+          setRecommendationData(data);
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.error("Recommendations: Error fetching recommendations:", err);
+          setError(err.message || "Could not retrieve health recommendations from server.");
+          setRecommendationData(null);
+        }
+      } finally {
+        if (!ignore) setRecsLoading(false);
+      }
+    }
+
+    loadRecs();
+    return () => {
+      ignore = true;
+    };
+  }, [selectedStationId]);
+
+  const handleRefresh = async () => {
+    if (!selectedStationId) return;
+    setRecsLoading(true);
+    setError(null);
+    try {
+      const data = await getStationRecommendations(selectedStationId);
+      setRecommendationData(data);
+    } catch (err) {
+      setError(err.message || "Failed to refresh recommendations.");
+    } finally {
+      setRecsLoading(false);
+    }
+  };
+
+  const selectedStation = stations.find((s) => String(s.stationId) === String(selectedStationId));
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "20px 24px" }}>
@@ -23,52 +101,94 @@ function Recommendations() {
       >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: "700", fontSize: "12px", textTransform: "uppercase" }}>
-            <HiOutlineLightBulb size={18} /> Public Health Advisory
+            <HiOutlineLightBulb size={18} /> Public Health Advisory Engine
           </div>
           <h1 style={{ fontSize: "30px", fontWeight: "800", color: "#0f172a", margin: "4px 0" }}>
             Health Guide & Exposure Guidelines 💡
           </h1>
           <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-            Standard health recommendations based on CPCB & WHO air pollution safety thresholds.
+            Dynamic, rule-based medical advisories computed by backend from real-time monitoring telemetry.
           </p>
         </div>
 
-        {/* City Selector */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <HiOutlineLocationMarker size={20} color="#10b981" />
-          <select
-            value={selectedCityId}
-            onChange={(e) => setSelectedCityId(e.target.value)}
+        {/* Station Selector & Refresh */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <HiOutlineLocationMarker size={20} color="#10b981" />
+            <select
+              value={selectedStationId}
+              onChange={(e) => setSelectedStationId(e.target.value)}
+              disabled={stations.length === 0}
+              style={{
+                padding: "10px 16px",
+                borderRadius: "12px",
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#ffffff",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#0f172a",
+                cursor: "pointer",
+                outline: "none"
+              }}
+            >
+              {stations.map((s) => (
+                <option key={s.stationId} value={s.stationId}>
+                  {s.city} — {s.stationName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={recsLoading}
             style={{
-              padding: "10px 16px",
-              borderRadius: "12px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              backgroundColor: "#f8fafc",
               border: "1px solid #cbd5e1",
-              backgroundColor: "#ffffff",
-              fontSize: "14px",
+              padding: "9px 14px",
+              borderRadius: "10px",
+              fontSize: "13px",
               fontWeight: "600",
-              color: "#0f172a",
-              cursor: "pointer",
-              outline: "none"
+              color: "#475569",
+              cursor: "pointer"
             }}
           >
-            {sensorLocations.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.city} ({s.aqi} AQI - {s.category})
-              </option>
-            ))}
-          </select>
+            <HiOutlineRefresh size={16} /> Refresh
+          </button>
         </div>
       </div>
 
-      <RecommendationCard
-        aqi={selectedSensor.aqi}
-        healthAdvice={selectedSensor.healthAdvice}
-      />
+      {error && (
+        <ErrorMessage
+          message={error}
+          subtext="Unable to fetch health advisory for the selected station."
+          onRetry={handleRefresh}
+        />
+      )}
 
-      {/* General Guidelines Matrix */}
+      {(loading || recsLoading) && (
+        <div style={{ marginBottom: "20px" }}>
+          <LoadingSpinner message="Calculating real-time health advisories from station telemetry..." />
+        </div>
+      )}
+
+      {recommendationData && (
+        <RecommendationCard
+          city={recommendationData.city || selectedStation?.city}
+          aqi={recommendationData.aqi}
+          category={recommendationData.category}
+          dominantPollutant={recommendationData.dominantPollutant}
+          recommendations={recommendationData.recommendations}
+        />
+      )}
+
+      {/* General Indian CPCB Guidelines Matrix */}
       <div style={{ marginTop: "32px" }}>
         <h3 style={{ fontSize: "20px", fontWeight: "700", color: "#0f172a", marginBottom: "16px" }}>
-          Standard Air Quality Index Scale & Protection Guidelines
+          Indian National Air Quality Index (CPCB) Standard Scale
         </h3>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px" }}>
@@ -100,12 +220,12 @@ function Recommendations() {
                 </span>
               </div>
               <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
-                {cat.label === "Good" && "Minimal impact. Safe for everyone to engage in all outdoor recreational activities."}
-                {cat.label === "Satisfactory" && "Minor breathing discomfort to sensitive people. Safe for general public outdoor activities."}
-                {cat.label === "Moderate" && "Discomfort to patients with asthma & heart conditions. Sensitive groups should reduce heavy exertion."}
-                {cat.label === "Poor" && "Breathing discomfort to most people on prolonged exposure. Wear N95 masks outdoors."}
-                {cat.label === "Very Poor" && "Respiratory illness on prolonged exposure. Avoid morning/evening outdoor cardio and runs."}
-                {cat.label === "Severe" && "Seriously affects healthy people and severely impacts patients. Strict indoor stay advised."}
+                {cat.label === "Good" && "Minimal health impact. Safe for all outdoor activities."}
+                {cat.label === "Satisfactory" && "Minor breathing discomfort to sensitive people. Safe for general public."}
+                {cat.label === "Moderate" && "Breathing discomfort to people with asthma and heart conditions."}
+                {cat.label === "Poor" && "Breathing discomfort to most people on prolonged exposure. N95 mask recommended."}
+                {cat.label === "Very Poor" && "Respiratory illness on prolonged exposure. Severe impact on sensitive groups."}
+                {cat.label === "Severe" && "Emergency health alert. Seriously affects healthy people and severely impacts patients."}
               </p>
             </div>
           ))}

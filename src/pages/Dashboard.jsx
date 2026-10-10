@@ -1,7 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { getCityData, sensorLocations } from "../data/dummyData";
-import { getStations, getStationHistory, getEvents } from "../services/api";
+import { 
+  getStations, 
+  getStationHistory, 
+  getEvents,
+  getStationWeather,
+  getStationHealth,
+  getStationRecommendations,
+  getStationForecast
+} from "../services/api";
 import { 
   mapBackendStationToFrontend, 
   mapBackendHistoryToHourlyTrend, 
@@ -22,11 +29,16 @@ import {
 
 function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const cityParam = searchParams.get("city") || "delhi-anand-vihar";
+  const cityParam = searchParams.get("city") || "";
 
-  const [stations, setStations] = useState(sensorLocations);
+  const [stations, setStations] = useState([]);
   const [hourlyTrend, setHourlyTrend] = useState([]);
   const [activeEvent, setActiveEvent] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [healthData, setHealthData] = useState(null);
+  const [recommendationsData, setRecommendationsData] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
@@ -40,18 +52,17 @@ function Dashboard() {
         const res = await getStations();
         if (!ignore) {
           if (res && Array.isArray(res.stations) && res.stations.length > 0) {
-            const mapped = res.stations.map((s) => mapBackendStationToFrontend(s, sensorLocations));
+            const mapped = res.stations.map((s) => mapBackendStationToFrontend(s));
             setStations(mapped);
           } else {
-            setStations(sensorLocations);
+            setStations([]);
           }
           setError(null);
         }
       } catch (err) {
         if (!ignore) {
           console.error("Dashboard: Error fetching stations:", err);
-          setError("Could not reach the server");
-          setStations(sensorLocations);
+          setError("Could not reach backend server to load monitoring stations.");
         }
       } finally {
         if (!ignore) {
@@ -67,54 +78,86 @@ function Dashboard() {
 
   // 2. Identify the active station
   const activeStation = useMemo(() => {
+    if (stations.length === 0) return null;
+    if (!cityParam) return stations[0];
+
     const match = stations.find(
       (s) =>
         String(s.id).toLowerCase() === cityParam.toLowerCase() ||
         String(s.stationId) === cityParam ||
         s.city.toLowerCase() === cityParam.toLowerCase()
     );
-    return match || stations[0] || getCityData(cityParam);
+    return match || stations[0];
   }, [stations, cityParam]);
 
-  // 3. Fetch 24-hour reading history & events whenever activeStation changes
+  // 3. Fetch telemetry, weather, health, recommendations & forecast whenever activeStation changes
   const loadStationTelemetry = useCallback(async () => {
-    if (!activeStation) return;
+    if (!activeStation || !activeStation.stationId) return;
+    const sId = activeStation.stationId;
+
     setHistoryLoading(true);
     setHistoryError(null);
 
+    // Run parallel fetches for station data
     try {
-      if (activeStation.stationId) {
-        const historyRes = await getStationHistory(activeStation.stationId, 24);
-        if (historyRes && Array.isArray(historyRes.history) && historyRes.history.length > 0) {
-          const mappedTrend = mapBackendHistoryToHourlyTrend(historyRes.history, activeStation);
-          setHourlyTrend(mappedTrend);
-        } else {
-          setHourlyTrend([]);
-        }
+      const [historyRes, weatherRes, healthRes, recsRes, forecastRes, eventsRes] = await Promise.allSettled([
+        getStationHistory(sId, 24),
+        getStationWeather(sId),
+        getStationHealth(sId),
+        getStationRecommendations(sId),
+        getStationForecast(sId, 6),
+        getEvents(10)
+      ]);
+
+      // Handle history
+      if (historyRes.status === "fulfilled" && historyRes.value && Array.isArray(historyRes.value.history)) {
+        const mappedTrend = mapBackendHistoryToHourlyTrend(historyRes.value.history, activeStation);
+        setHourlyTrend(mappedTrend);
       } else {
         setHourlyTrend([]);
       }
 
-      // Check for active pollution spike events for this station
-      try {
-        const eventsRes = await getEvents(10);
-        if (eventsRes && Array.isArray(eventsRes.events) && eventsRes.events.length > 0) {
-          const stationEvent = eventsRes.events.find(
-            (e) =>
-              Number(e.station_id) === Number(activeStation.stationId) ||
-              e.city.toLowerCase() === activeStation.city.toLowerCase()
-          );
-          if (stationEvent) {
-            setActiveEvent(mapBackendEvent(stationEvent));
-          } else {
-            setActiveEvent(null);
-          }
-        }
-      } catch {
-        // Event check error is non-critical
+      // Handle weather
+      if (weatherRes.status === "fulfilled") {
+        setWeatherData(weatherRes.value);
+      } else {
+        setWeatherData({ available: false });
+      }
+
+      // Handle health
+      if (healthRes.status === "fulfilled") {
+        setHealthData(healthRes.value);
+      } else {
+        setHealthData({ status: "Unavailable", lastUpdate: null, minutesSinceUpdate: null });
+      }
+
+      // Handle recommendations
+      if (recsRes.status === "fulfilled") {
+        setRecommendationsData(recsRes.value);
+      } else {
+        setRecommendationsData(null);
+      }
+
+      // Handle forecast
+      if (forecastRes.status === "fulfilled") {
+        setForecastData(forecastRes.value);
+      } else {
+        setForecastData(null);
+      }
+
+      // Handle events
+      if (eventsRes.status === "fulfilled" && eventsRes.value && Array.isArray(eventsRes.value.events)) {
+        const stationEvent = eventsRes.value.events.find(
+          (e) =>
+            Number(e.station_id) === Number(sId) ||
+            e.city.toLowerCase() === activeStation.city.toLowerCase()
+        );
+        setActiveEvent(stationEvent ? mapBackendEvent(stationEvent) : null);
+      } else {
+        setActiveEvent(null);
       }
     } catch (err) {
-      console.error("Dashboard: Error fetching station history:", err);
+      console.error("Dashboard: Error fetching station telemetry:", err);
       setHistoryError("Could not retrieve 24h telemetry readings from server.");
       setHourlyTrend([]);
     } finally {
@@ -159,7 +202,7 @@ function Dashboard() {
     try {
       const res = await getStations();
       if (res && Array.isArray(res.stations) && res.stations.length > 0) {
-        const mapped = res.stations.map((s) => mapBackendStationToFrontend(s, sensorLocations));
+        const mapped = res.stations.map((s) => mapBackendStationToFrontend(s));
         setStations(mapped);
       }
       await loadStationTelemetry();
@@ -171,10 +214,22 @@ function Dashboard() {
     }
   };
 
+  if (loading && !displayStation) {
+    return (
+      <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "40px 24px" }}>
+        <LoadingSpinner message="Connecting to environmental monitoring stations..." />
+      </div>
+    );
+  }
+
   if (!displayStation) {
     return (
       <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "40px 24px" }}>
-        <LoadingSpinner message="Loading station dashboard..." />
+        <ErrorMessage
+          message="No monitoring stations available"
+          subtext="Please check that the backend server is running at http://localhost:3000."
+          onRetry={handleManualRefresh}
+        />
       </div>
     );
   }
@@ -227,7 +282,7 @@ function Dashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <HiOutlineLocationMarker size={20} color="#2563eb" />
             <select
-              value={displayStation.id}
+              value={displayStation.stationId || displayStation.id}
               onChange={handleCityChange}
               style={{
                 padding: "10px 16px",
@@ -243,8 +298,8 @@ function Dashboard() {
               }}
             >
               {stations.map((sensor) => (
-                <option key={sensor.id} value={sensor.id}>
-                  {sensor.city} — {sensor.station} ({sensor.aqi} AQI - {sensor.category})
+                <option key={sensor.stationId || sensor.id} value={sensor.stationId || sensor.id}>
+                  {sensor.city} — {sensor.station || sensor.stationName} ({sensor.aqi} AQI - {sensor.category})
                 </option>
               ))}
             </select>
@@ -278,7 +333,7 @@ function Dashboard() {
       {error && (
         <ErrorMessage
           message={error}
-          subtext="Unable to reach Express backend at http://localhost:3000. Displaying fallback station data."
+          subtext="Unable to reach Express backend at http://localhost:3000."
           onRetry={handleManualRefresh}
         />
       )}
@@ -290,7 +345,7 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Live Anomaly Detection Event Card (from backend /api/events or AQI > 200) */}
+      {/* Live Anomaly Detection Event Card */}
       {activeEvent ? (
         <EventCard
           city={activeEvent.city}
@@ -309,8 +364,12 @@ function Dashboard() {
         )
       )}
 
-      {/* Main AQI Telemetry Overview Card */}
-      <AQICard data={displayStation} />
+      {/* Main AQI Telemetry Overview Card with Live Weather & Station Health */}
+      <AQICard 
+        data={displayStation} 
+        weather={weatherData}
+        health={healthData}
+      />
 
       {/* 6-Pollutant Breakdown Matrix from Real Backend Pollutants */}
       <PollutantCard
@@ -328,18 +387,19 @@ function Dashboard() {
         onRetry={loadStationTelemetry}
       />
 
-      {/* Health Analysis Section */}
-      {/* TODO: Connect to backend health recommendations endpoint when available. Currently on guideline model. */}
+      {/* Rule-based Health Guidance Section */}
       <RecommendationCard
-        aqi={displayStation.aqi}
-        healthAdvice={displayStation.healthAdvice}
+        city={displayStation.city}
+        aqi={recommendationsData?.aqi ?? displayStation.aqi}
+        category={recommendationsData?.category ?? displayStation.category}
+        dominantPollutant={recommendationsData?.dominantPollutant ?? displayStation.dominatingPollutant}
+        recommendations={recommendationsData?.recommendations || []}
       />
 
-      {/* Predictive ML Forecast for the selected city */}
-      {/* TODO: Connect to predictive ML neural forecast endpoint when available. Currently on diurnal model. */}
+      {/* Trend Forecast Section */}
       <PredictionCard
         city={displayStation.city}
-        baseAQI={displayStation.aqi}
+        forecastData={forecastData}
       />
     </div>
   );

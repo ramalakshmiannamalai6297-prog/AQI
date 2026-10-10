@@ -77,7 +77,6 @@ export async function getStationHistory(stationId, limit = 24) {
 /**
  * Fetch pollution hotspots (spikes) across stations
  * Endpoint: GET /api/hotspots?limit=10
- * NOTE: numeric fields arrive as strings from SQL/aggregation, so wrapped with Number()
  */
 export async function getHotspots(limit = 10) {
   try {
@@ -114,7 +113,6 @@ export async function getHotspots(limit = 10) {
 /**
  * Fetch recent pollution spike events
  * Endpoint: GET /api/events?limit=10
- * NOTE: numeric fields wrapped with Number()
  */
 export async function getEvents(limit = 10) {
   try {
@@ -151,9 +149,178 @@ export async function getEvents(limit = 10) {
   }
 }
 
+/**
+ * Fetch rule-based health recommendations for a station
+ * Endpoint: GET /api/stations/:stationId/recommendations
+ */
+export async function getStationRecommendations(stationId) {
+  try {
+    const response = await fetch(`${BASE_URL}/api/stations/${stationId}/recommendations`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to fetch recommendations (${response.status})`);
+    }
+    const data = await response.json();
+    return {
+      stationId: Number(data.stationId),
+      city: data.city,
+      stationName: data.stationName,
+      aqi: data.aqi !== null && data.aqi !== undefined ? Number(data.aqi) : null,
+      category: data.category,
+      dominantPollutant: data.dominantPollutant,
+      recommendations: Array.isArray(data.recommendations) ? data.recommendations : []
+    };
+  } catch (error) {
+    console.error(`Error in getStationRecommendations for station ${stationId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch trend-based linear regression forecast for a station
+ * Endpoint: GET /api/stations/:stationId/forecast?hours=6
+ */
+export async function getStationForecast(stationId, hours = 6) {
+  try {
+    const response = await fetch(`${BASE_URL}/api/stations/${stationId}/forecast?hours=${hours}`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to fetch forecast (${response.status})`);
+    }
+    const data = await response.json();
+    return {
+      stationId: Number(data.stationId),
+      city: data.city,
+      stationName: data.stationName,
+      method: data.method,
+      basedOnReadings: Number(data.basedOnReadings),
+      trend: data.trend,
+      forecast: Array.isArray(data.forecast)
+        ? data.forecast.map((f) => ({
+            hoursAhead: Number(f.hoursAhead),
+            time: f.time,
+            aqi: Number(f.aqi),
+            category: f.category
+          }))
+        : []
+    };
+  } catch (error) {
+    console.error(`Error in getStationForecast for station ${stationId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch live weather from Open-Meteo via backend
+ * Endpoint: GET /api/stations/:stationId/weather
+ */
+export async function getStationWeather(stationId) {
+  try {
+    const response = await fetch(`${BASE_URL}/api/stations/${stationId}/weather`);
+    if (!response.ok) {
+      return { available: false };
+    }
+    const data = await response.json();
+    if (!data.available) {
+      return { available: false };
+    }
+    return {
+      available: true,
+      temperature: Number(data.temperature),
+      humidity: Number(data.humidity),
+      temperatureUnit: data.temperatureUnit || "°C",
+      humidityUnit: data.humidityUnit || "%",
+      time: data.time
+    };
+  } catch (error) {
+    console.warn(`Weather fetch failed for station ${stationId}:`, error);
+    return { available: false };
+  }
+}
+
+/**
+ * Fetch station diagnostic health from backend
+ * Endpoint: GET /api/stations/:stationId/health
+ */
+export async function getStationHealth(stationId) {
+  try {
+    const response = await fetch(`${BASE_URL}/api/stations/${stationId}/health`);
+    if (!response.ok) {
+      return { status: "Unavailable", lastUpdate: null, minutesSinceUpdate: null };
+    }
+    const data = await response.json();
+    return {
+      status: data.status || "Unavailable",
+      lastUpdate: data.lastUpdate,
+      minutesSinceUpdate: data.minutesSinceUpdate !== null ? Number(data.minutesSinceUpdate) : null
+    };
+  } catch (error) {
+    console.warn(`Station health fetch failed for station ${stationId}:`, error);
+    return { status: "Unavailable", lastUpdate: null, minutesSinceUpdate: null };
+  }
+}
+
+/**
+ * Subscribe email to station pollution alerts
+ * Endpoint: POST /api/alerts/subscribe
+ */
+export async function subscribeAlerts(email, stationId, minSeverity = "MEDIUM") {
+  const response = await fetch(`${BASE_URL}/api/alerts/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, stationId: Number(stationId), minSeverity })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to subscribe.");
+  }
+  return data;
+}
+
+/**
+ * Unsubscribe email from station pollution alerts
+ * Endpoint: POST /api/alerts/unsubscribe
+ */
+export async function unsubscribeAlerts(email, stationId) {
+  const response = await fetch(`${BASE_URL}/api/alerts/unsubscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, stationId: Number(stationId) })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to unsubscribe.");
+  }
+  return data;
+}
+
+/**
+ * Send test alert to email
+ * Endpoint: POST /api/alerts/test
+ */
+export async function testAlerts(email) {
+  const response = await fetch(`${BASE_URL}/api/alerts/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to send test alert.");
+  }
+  return data;
+}
+
 export default {
   getStations,
   getStationHistory,
   getHotspots,
-  getEvents
+  getEvents,
+  getStationRecommendations,
+  getStationForecast,
+  getStationWeather,
+  getStationHealth,
+  subscribeAlerts,
+  unsubscribeAlerts,
+  testAlerts
 };

@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
-import { sensorLocations, AQI_CATEGORIES } from "../data/dummyData";
-import { getAQICategory } from "../utils/aqi.js";
+import { AQI_CATEGORIES, getAQICategory } from "../utils/aqi.js";
 import { 
   HiOutlineLocationMarker, 
   HiOutlineArrowRight, 
@@ -42,8 +41,8 @@ function AirMap({ onSelectCity, stations = null }) {
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [flyCoords, setFlyCoords] = useState(null);
 
-  // Use live stations if provided, fallback to dummy sensorLocations
-  const activeSensors = (stations && stations.length > 0) ? stations : sensorLocations;
+  // Use live stations if provided
+  const activeSensors = Array.isArray(stations) ? stations : [];
 
   // Filter cities based on search term and category
   const filteredLocations = activeSensors.filter((sensor) => {

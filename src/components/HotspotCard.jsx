@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { sensorLocations } from "../data/dummyData";
 import { getAQICategory } from "../utils/aqi.js";
 import { getHotspots } from "../services/api";
 import { mapBackendHotspot } from "../services/mappers";
@@ -20,21 +19,19 @@ function HotspotCard({ limit = 5, hotspots: propHotspots = null }) {
       try {
         const res = await getHotspots(limit);
         if (isMounted) {
-          if (res && Array.isArray(res.hotspots) && res.hotspots.length > 0) {
-            const mapped = res.hotspots.map((h) => mapBackendHotspot(h, sensorLocations)).slice(0, limit);
+          if (res && Array.isArray(res.hotspots)) {
+            const mapped = res.hotspots.map(mapBackendHotspot).slice(0, limit);
             setFetchedHotspots(mapped);
           } else {
-            const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi).slice(0, limit);
-            setFetchedHotspots(fallback);
+            setFetchedHotspots([]);
           }
           setError(null);
         }
       } catch (err) {
         if (isMounted) {
           console.error("HotspotCard: Error fetching hotspots:", err);
-          setError("Could not reach the server");
-          const fallback = [...sensorLocations].sort((a, b) => b.aqi - a.aqi).slice(0, limit);
-          setFetchedHotspots(fallback);
+          setError("Could not reach backend server to load hotspots.");
+          setFetchedHotspots([]);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -47,7 +44,7 @@ function HotspotCard({ limit = 5, hotspots: propHotspots = null }) {
     };
   }, [propHotspots, limit]);
 
-  const hotspots = propHotspots || (fetchedHotspots.length > 0 ? fetchedHotspots : [...sensorLocations].sort((a, b) => b.aqi - a.aqi).slice(0, limit));
+  const hotspots = propHotspots || fetchedHotspots;
 
   return (
     <div
@@ -103,7 +100,7 @@ function HotspotCard({ limit = 5, hotspots: propHotspots = null }) {
       {error && (
         <ErrorMessage
           message={error}
-          subtext="Showing fallback hotspot telemetry."
+          subtext="Unable to reach Express backend at http://localhost:3000."
         />
       )}
 
@@ -111,46 +108,49 @@ function HotspotCard({ limit = 5, hotspots: propHotspots = null }) {
         <LoadingSpinner message="Scanning CAAQMS for pollution hotspots..." />
       )}
 
+      {!loading && hotspots.length === 0 && !error && (
+        <p style={{ fontSize: "14px", color: "#64748b", margin: 0, padding: "12px 0" }}>
+          No high spike hotspots currently detected across stations.
+        </p>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         {hotspots.map((sensor, index) => {
           const cat = getAQICategory(sensor.aqi);
           return (
             <Link
-              key={`${sensor.id}-${index}`}
-              to={`/dashboard?city=${sensor.id}`}
+              key={`${sensor.stationId || sensor.id}-${index}`}
+              to={`/dashboard?city=${sensor.stationId || sensor.id}`}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "12px 16px",
-                backgroundColor: "#f8fafc",
+                padding: "14px 18px",
                 borderRadius: "12px",
+                backgroundColor: "#f8fafc",
                 border: "1px solid #e2e8f0",
                 textDecoration: "none",
-                color: "inherit",
                 transition: "all 0.2s ease"
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "#f1f5f9";
-                e.currentTarget.style.borderColor = "#cbd5e1";
                 e.currentTarget.style.transform = "translateX(4px)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "#f8fafc";
-                e.currentTarget.style.borderColor = "#e2e8f0";
-                e.currentTarget.style.transform = "translateX(0)";
+                e.currentTarget.style.transform = "none";
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
                 <span
                   style={{
-                    width: "24px",
-                    height: "24px",
-                    borderRadius: "50%",
-                    backgroundColor: index < 3 ? "#ef4444" : "#64748b",
-                    color: "#ffffff",
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "8px",
+                    backgroundColor: index < 3 ? "#fef2f2" : "#f1f5f9",
+                    color: index < 3 ? "#ef4444" : "#64748b",
                     fontSize: "12px",
-                    fontWeight: "700",
+                    fontWeight: "800",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center"
@@ -158,38 +158,42 @@ function HotspotCard({ limit = 5, hotspots: propHotspots = null }) {
                 >
                   #{index + 1}
                 </span>
+
                 <div>
-                  <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
-                    {sensor.city}, <span style={{ fontWeight: "400", color: "#64748b", fontSize: "13px" }}>{sensor.state}</span>
+                  <h4 style={{ fontSize: "15px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
+                    {sensor.city}
                   </h4>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>{sensor.station}</span>
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>
+                    {sensor.station || sensor.station_name}
+                  </span>
                 </div>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "18px", fontWeight: "800", color: cat.color }}>
-                    {sensor.aqi} <span style={{ fontSize: "11px", fontWeight: "600" }}>AQI</span>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "4px", justifyContent: "flex-end" }}>
+                    <span style={{ fontSize: "20px", fontWeight: "800", color: cat.color }}>
+                      {sensor.aqi}
+                    </span>
+                    <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600" }}>AQI</span>
                   </div>
-                  <span style={{ fontSize: "11px", color: "#ef4444", fontWeight: "600" }}>
-                    {sensor.trend}
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "700",
+                      color: cat.text,
+                      backgroundColor: cat.bg,
+                      padding: "2px 6px",
+                      borderRadius: "4px"
+                    }}
+                  >
+                    {cat.label}
                   </span>
                 </div>
-                <div
-                  style={{
-                    backgroundColor: cat.bg,
-                    color: cat.text,
-                    border: `1px solid ${cat.color}40`,
-                    padding: "4px 10px",
-                    borderRadius: "12px",
-                    fontSize: "11px",
-                    fontWeight: "700",
-                    minWidth: "80px",
-                    textAlign: "center"
-                  }}
-                >
-                  {sensor.category}
-                </div>
+
+                <span style={{ fontSize: "11px", fontWeight: "700", color: "#ef4444" }}>
+                  {sensor.trend}
+                </span>
               </div>
             </Link>
           );

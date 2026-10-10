@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AirMap from "../components/AirMap";
-import { sensorLocations } from "../data/dummyData";
 import { getAQICategory } from "../utils/aqi.js";
 import { getStations } from "../services/api";
 import { mapBackendStationToFrontend } from "../services/mappers";
@@ -14,7 +13,7 @@ import {
 } from "react-icons/hi";
 
 function Home() {
-  const [stations, setStations] = useState(sensorLocations);
+  const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -24,15 +23,15 @@ function Home() {
     try {
       const data = await getStations();
       if (data && Array.isArray(data.stations) && data.stations.length > 0) {
-        const mapped = data.stations.map((s) => mapBackendStationToFrontend(s, sensorLocations));
+        const mapped = data.stations.map((s) => mapBackendStationToFrontend(s));
         setStations(mapped);
       } else {
-        setStations(sensorLocations);
+        setStations([]);
       }
     } catch (err) {
       console.error("Home: Error reaching backend for stations:", err);
       setError("Could not reach the server");
-      setStations(sensorLocations);
+      setStations([]);
     } finally {
       setLoading(false);
     }
@@ -45,10 +44,10 @@ function Home() {
         const data = await getStations();
         if (!ignore) {
           if (data && Array.isArray(data.stations) && data.stations.length > 0) {
-            const mapped = data.stations.map((s) => mapBackendStationToFrontend(s, sensorLocations));
+            const mapped = data.stations.map((s) => mapBackendStationToFrontend(s));
             setStations(mapped);
           } else {
-            setStations(sensorLocations);
+            setStations([]);
           }
           setError(null);
         }
@@ -56,7 +55,7 @@ function Home() {
         if (!ignore) {
           console.error("Home: Error reaching backend for stations:", err);
           setError("Could not reach the server");
-          setStations(sensorLocations);
+          setStations([]);
         }
       } finally {
         if (!ignore) {
@@ -74,13 +73,13 @@ function Home() {
   const totalSensors = stations.length;
   const avgAQI = totalSensors > 0
     ? Math.round(stations.reduce((acc, s) => acc + (s.aqi || 0), 0) / totalSensors)
-    : 100;
+    : 0;
   const mostPolluted = totalSensors > 0
     ? [...stations].sort((a, b) => b.aqi - a.aqi)[0]
-    : sensorLocations[0];
+    : null;
   const cleanest = totalSensors > 0
     ? [...stations].sort((a, b) => a.aqi - b.aqi)[0]
-    : sensorLocations[0];
+    : null;
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "20px 24px" }}>
@@ -134,7 +133,7 @@ function Home() {
         </div>
 
         <Link
-          to={`/dashboard?city=${mostPolluted.id}`}
+          to={`/dashboard${mostPolluted ? `?city=${mostPolluted.id || mostPolluted.stationId}` : ""}`}
           style={{
             backgroundColor: "#2563eb",
             color: "#ffffff",
@@ -160,7 +159,7 @@ function Home() {
       {error && (
         <ErrorMessage
           message={error}
-          subtext="Unable to reach Express backend at http://localhost:3000. Displaying cached station telemetry."
+          subtext="Unable to reach Express backend at http://localhost:3000."
           onRetry={fetchStationData}
         />
       )}
@@ -258,14 +257,14 @@ function Home() {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: "4px" }}>
             <div>
               <span style={{ fontSize: "20px", fontWeight: "800", color: "#0f172a" }}>
-                {mostPolluted.city}
+                {mostPolluted?.city || "Unavailable"}
               </span>
               <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>
-                {mostPolluted.station}
+                {mostPolluted?.station || mostPolluted?.stationName || "No data"}
               </span>
             </div>
             <span style={{ fontSize: "24px", fontWeight: "900", color: "#7f1d1d" }}>
-              {mostPolluted.aqi}
+              {mostPolluted?.aqi !== undefined ? mostPolluted.aqi : "—"}
             </span>
           </div>
         </div>
@@ -286,14 +285,14 @@ function Home() {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: "4px" }}>
             <div>
               <span style={{ fontSize: "20px", fontWeight: "800", color: "#0f172a" }}>
-                {cleanest.city}
+                {cleanest?.city || "Unavailable"}
               </span>
               <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>
-                {cleanest.station}
+                {cleanest?.station || cleanest?.stationName || "No data"}
               </span>
             </div>
             <span style={{ fontSize: "24px", fontWeight: "900", color: "#10b981" }}>
-              {cleanest.aqi}
+              {cleanest?.aqi !== undefined ? cleanest.aqi : "—"}
             </span>
           </div>
         </div>

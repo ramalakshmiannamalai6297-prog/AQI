@@ -1,4 +1,3 @@
-import { sensorLocations, getHealthAdvice } from "../data/dummyData.js";
 import { calcAQI, calcSubIndex, getAQICategory } from "../utils/aqi.js";
 
 /**
@@ -21,29 +20,16 @@ export function formatTimeAgo(dateString) {
 
 /**
  * Maps a single backend station to the shape used by UI components
- * (Matches sensorLocations shape from dummyData.js)
  */
-export function mapBackendStationToFrontend(backendStation, dummySensors = sensorLocations) {
+export function mapBackendStationToFrontend(backendStation) {
   if (!backendStation) return null;
 
-  const dummyList = Array.isArray(dummySensors) ? dummySensors : sensorLocations;
-
-  // Find corresponding dummy sensor for fallback attributes (weather, sensorStatus, ID slug)
-  const cityLower = (backendStation.city || "").toLowerCase().trim();
-  const stationNameLower = (backendStation.stationName || "").toLowerCase().trim();
-
-  const dummyMatch = dummyList.find(
-    (d) =>
-      d.city.toLowerCase().trim() === cityLower ||
-      d.station.toLowerCase().trim() === stationNameLower
-  ) || dummyList[0] || {};
-
-  const pm25 = Number(backendStation.pollutants?.["PM2.5"] ?? dummyMatch.pm25 ?? 0);
-  const pm10 = Number(backendStation.pollutants?.["PM10"] ?? dummyMatch.pm10 ?? 0);
-  const no2 = Number(backendStation.pollutants?.["NO2"] ?? dummyMatch.no2 ?? 0);
-  const so2 = Number(backendStation.pollutants?.["SO2"] ?? dummyMatch.so2 ?? 0);
-  const co = Number(backendStation.pollutants?.["CO"] ?? dummyMatch.co ?? 0);
-  const o3 = Number(backendStation.pollutants?.["OZONE"] ?? dummyMatch.o3 ?? 0);
+  const pm25 = Number(backendStation.pollutants?.["PM2.5"] ?? 0);
+  const pm10 = Number(backendStation.pollutants?.["PM10"] ?? 0);
+  const no2 = Number(backendStation.pollutants?.["NO2"] ?? 0);
+  const so2 = Number(backendStation.pollutants?.["SO2"] ?? 0);
+  const co = Number(backendStation.pollutants?.["CO"] ?? 0);
+  const o3 = Number(backendStation.pollutants?.["OZONE"] ?? 0);
 
   const pollutantsMap = {
     "PM2.5": pm25,
@@ -56,11 +42,11 @@ export function mapBackendStationToFrontend(backendStation, dummySensors = senso
 
   // Real Indian CPCB AQI calculation from real pollutant values
   const aqiResult = calcAQI(backendStation.pollutants) || calcAQI(pollutantsMap);
-  const aqi = aqiResult ? aqiResult.aqi : (dummyMatch.aqi ?? 120);
-  const dominating = aqiResult ? aqiResult.dominantPollutant : (dummyMatch.dominatingPollutant || "PM2.5");
+  const aqi = aqiResult ? aqiResult.aqi : 0;
+  const dominating = aqiResult ? aqiResult.dominantPollutant : "PM2.5";
   const categoryInfo = getAQICategory(aqi);
 
-  let lastUpdatedFormatted = dummyMatch.lastUpdated || "Live";
+  let lastUpdatedFormatted = "Live";
   if (backendStation.lastUpdate) {
     const d = new Date(backendStation.lastUpdate);
     if (!isNaN(d.getTime())) {
@@ -69,16 +55,14 @@ export function mapBackendStationToFrontend(backendStation, dummySensors = senso
   }
 
   return {
-    ...dummyMatch, // retains temperature, humidity, sensorStatus demo values
-    // ID slug keeps URL routing compatible (/dashboard?city=delhi-anand-vihar or city=21)
-    id: dummyMatch.id || String(backendStation.stationId),
+    id: String(backendStation.stationId),
     stationId: Number(backendStation.stationId),
-    station: backendStation.stationName || dummyMatch.station,
-    stationName: backendStation.stationName || dummyMatch.station,
-    city: backendStation.city || dummyMatch.city,
-    state: backendStation.state || dummyMatch.state,
-    latitude: Number(backendStation.latitude ?? dummyMatch.latitude),
-    longitude: Number(backendStation.longitude ?? dummyMatch.longitude),
+    station: backendStation.stationName || "Station",
+    stationName: backendStation.stationName || "Station",
+    city: backendStation.city || "City",
+    state: backendStation.state || "State",
+    latitude: Number(backendStation.latitude || 0),
+    longitude: Number(backendStation.longitude || 0),
     readingId: backendStation.readingId ? Number(backendStation.readingId) : undefined,
     lastUpdate: backendStation.lastUpdate,
     lastUpdated: lastUpdatedFormatted,
@@ -87,9 +71,8 @@ export function mapBackendStationToFrontend(backendStation, dummySensors = senso
     categoryColor: categoryInfo.color,
     categoryBg: categoryInfo.bg,
     categoryText: categoryInfo.text,
-    healthAdvice: getHealthAdvice(aqi),
     dominatingPollutant: dominating,
-    trend: dummyMatch.trend || "Live Tracking",
+    trend: "Live Tracking",
     pm25,
     pm10,
     co,
@@ -134,7 +117,7 @@ export function mapBackendHistoryToHourlyTrend(historyList, station = null) {
     
     // Real Indian CPCB AQI calculation for every history timestamp
     const aqiResult = calcAQI(item.pollutants);
-    const aqi = aqiResult ? aqiResult.aqi : (station?.aqi ?? 120);
+    const aqi = aqiResult ? aqiResult.aqi : (station?.aqi ?? 0);
     const dominant = aqiResult ? aqiResult.dominantPollutant : (station?.dominatingPollutant || "PM2.5");
 
     return {
@@ -153,18 +136,8 @@ export function mapBackendHistoryToHourlyTrend(historyList, station = null) {
 /**
  * Maps a backend hotspot into component shape
  */
-export function mapBackendHotspot(hotspot, dummySensors = sensorLocations) {
-  const dummyList = Array.isArray(dummySensors) ? dummySensors : sensorLocations;
+export function mapBackendHotspot(hotspot) {
   const stationId = Number(hotspot.station_id);
-  const cityLower = (hotspot.city || "").toLowerCase().trim();
-  const stationLower = (hotspot.station_name || "").toLowerCase().trim();
-
-  const dummy = dummyList.find(
-    (d) =>
-      d.city.toLowerCase().trim() === cityLower ||
-      d.station.toLowerCase().trim() === stationLower
-  ) || {};
-
   const previousValue = Number(hotspot.previous_value);
   const currentValue = Number(hotspot.current_value);
   const changeValue = Number(hotspot.change_value);
@@ -172,11 +145,11 @@ export function mapBackendHotspot(hotspot, dummySensors = sensorLocations) {
 
   // Calculate real sub-index / AQI for hotspot
   const sub = calcSubIndex(hotspot.pollutant_id, currentValue);
-  const aqi = sub !== null ? sub : (dummy.aqi || 220);
+  const aqi = sub !== null ? sub : 0;
   const cat = getAQICategory(aqi);
 
   return {
-    id: dummy.id || String(stationId),
+    id: String(stationId),
     stationId,
     city: hotspot.city,
     state: hotspot.state,
@@ -194,8 +167,8 @@ export function mapBackendHotspot(hotspot, dummySensors = sensorLocations) {
     categoryColor: cat.color,
     categoryBg: cat.bg,
     categoryText: cat.text,
-    pm25: hotspot.pollutant_id === "PM2.5" ? Math.round(currentValue) : (dummy.pm25 || 0),
-    pm10: hotspot.pollutant_id === "PM10" ? Math.round(currentValue) : (dummy.pm10 || 0),
+    pm25: hotspot.pollutant_id === "PM2.5" ? Math.round(currentValue) : 0,
+    pm10: hotspot.pollutant_id === "PM10" ? Math.round(currentValue) : 0,
     trend: `+${changePercentage.toFixed(1)}% ${hotspot.pollutant_id}`
   };
 }
@@ -218,7 +191,6 @@ export function mapBackendEvent(event) {
 
   const title = `${event.severity || "POLLUTANT"} SPIKE: ${event.city} (${event.pollutant_id})`;
   
-  // Format numbers inside message to 1 decimal place without changing backend
   let message = event.message;
   if (message) {
     message = message.replace(/from\s+([0-9.]+)\s+to\s+([0-9.]+)/gi, (_, p1, p2) => {

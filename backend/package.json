@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "node scripts/seedSampleData.js",
-    "clear-sample": "node scripts/clearSampleData.js"
+    "clear-sample": "node scripts/clearSampleData.js",
+    "send-alerts": "node services/alertService.js",
+    "migrate-alerts": "node scripts/migrateAlerts.js"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +22,7 @@
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.23.2",
     "node-cron": "^4.6.0",
+    "nodemailer": "^10.1.0",
     "nodemon": "^3.1.14"
   }
 }

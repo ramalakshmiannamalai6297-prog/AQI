@@ -1,74 +1,6 @@
-import { useState, useEffect } from "react";
-import { getEvents } from "../services/api";
-import { mapBackendEvent } from "../services/mappers";
-import { LoadingSpinner, ErrorMessage } from "./StatusState";
-import { HiOutlineBell, HiOutlineExclamation, HiOutlineInformationCircle, HiOutlineClock } from "react-icons/hi";
+import { HiOutlineBell, HiOutlineExclamation, HiOutlineInformationCircle, HiOutlineClock, HiOutlineShieldCheck } from "react-icons/hi";
 
-const DEFAULT_ALERTS = [
-  {
-    id: 1,
-    type: "danger",
-    title: "Severe Air Quality Emergency in Patna & Delhi NCR",
-    time: "10 mins ago",
-    message: "AQI levels have surged past 380+ due to stagnant meteorological conditions and thermal inversion. Vulnerable groups must stay indoors."
-  },
-  {
-    id: 2,
-    type: "warning",
-    title: "PM2.5 Spike Detected in Kolkata & Lucknow",
-    time: "25 mins ago",
-    message: "Fine particulate matter (PM2.5) concentrations have crossed 180 µg/m³ (3x NAAQS limit). Anti-pollution measures active."
-  },
-  {
-    id: 3,
-    type: "info",
-    title: "Southern Region Air Quality Remains Clean",
-    time: "1 hour ago",
-    message: "Bengaluru, Kochi, and Chennai continue to record 'Good' to 'Satisfactory' AQI under active coastal breeze circulation."
-  }
-];
-
-function NotificationCard({ events: propEvents = null }) {
-  const [fetchedAlerts, setFetchedAlerts] = useState([]);
-  const [loading, setLoading] = useState(!propEvents);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (propEvents) return;
-
-    let isMounted = true;
-    async function loadAlerts() {
-      try {
-        const res = await getEvents(10);
-        if (isMounted) {
-          if (res && Array.isArray(res.events) && res.events.length > 0) {
-            setFetchedAlerts(res.events.map(mapBackendEvent));
-          } else {
-            setFetchedAlerts(DEFAULT_ALERTS);
-          }
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          console.error("NotificationCard: Could not reach server:", err);
-          setError("Could not reach the server");
-          setFetchedAlerts(DEFAULT_ALERTS);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-
-    loadAlerts();
-    return () => {
-      isMounted = false;
-    };
-  }, [propEvents]);
-
-  const alerts = propEvents && propEvents.length > 0
-    ? propEvents.map((e) => (e.title ? e : mapBackendEvent(e)))
-    : (fetchedAlerts.length > 0 ? fetchedAlerts : DEFAULT_ALERTS);
-
+function NotificationCard({ events = [], loading = false, error = null }) {
   const getTypeStyles = (type) => {
     switch (type) {
       case "danger":
@@ -107,56 +39,65 @@ function NotificationCard({ events: propEvents = null }) {
         </div>
         <div>
           <h3 style={{ fontSize: "20px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
-            🔔 Live Environmental Alerts
+            Recent Pollution Spike Incidents
           </h3>
           <p style={{ fontSize: "13px", color: "#64748b", margin: "2px 0 0" }}>
-            Automated threshold triggers & regional advisory notices from CAAQMS event engine
+            Automated anomaly detections triggered when a pollutant increases rapidly (&gt;30% and &gt;10 units)
           </p>
         </div>
       </div>
 
-      {error && (
-        <ErrorMessage
-          message={error}
-          subtext="Showing standard advisory notices."
-        />
-      )}
-
-      {loading && (
-        <LoadingSpinner message="Checking active pollution spike events..." />
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {alerts.map((alert) => {
-          const styles = getTypeStyles(alert.type);
-          return (
-            <div
-              key={alert.id}
-              style={{
-                backgroundColor: styles.bg,
-                border: `1px solid ${styles.border}`,
-                borderRadius: "12px",
-                padding: "16px 18px"
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  {styles.icon}
-                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: styles.text }}>
-                    {alert.title}
-                  </h4>
+      {events.length === 0 ? (
+        <div
+          style={{
+            padding: "32px 20px",
+            textAlign: "center",
+            backgroundColor: "#f8fafc",
+            borderRadius: "12px",
+            border: "1px dashed #cbd5e1"
+          }}
+        >
+          <HiOutlineShieldCheck size={32} color="#10b981" style={{ margin: "0 auto 8px" }} />
+          <h4 style={{ fontSize: "15px", fontWeight: "700", color: "#1e293b", margin: "0 0 4px" }}>
+            No Active Pollution Spikes
+          </h4>
+          <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+            The event detection engine has not recorded recent severe pollutant jumps. All stations operating within standard fluctuations.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {events.map((alert) => {
+            const styles = getTypeStyles(alert.type);
+            return (
+              <div
+                key={alert.id}
+                style={{
+                  backgroundColor: styles.bg,
+                  border: `1px solid ${styles.border}`,
+                  borderRadius: "12px",
+                  padding: "16px 18px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {styles.icon}
+                    <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: styles.text }}>
+                      {alert.title}
+                    </h4>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <HiOutlineClock size={12} /> {alert.time}
+                  </span>
                 </div>
-                <span style={{ fontSize: "11px", color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <HiOutlineClock size={12} /> {alert.time}
-                </span>
+                <p style={{ fontSize: "12px", color: "#475569", margin: "6px 0 0 28px", lineHeight: 1.5 }}>
+                  {alert.message}
+                </p>
               </div>
-              <p style={{ fontSize: "12px", color: "#475569", margin: "6px 0 0 28px", lineHeight: 1.5 }}>
-                {alert.message}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { sensorLocations } from "../data/dummyData";
 import { getAQICategory } from "../utils/aqi.js";
 import { HiOutlineSearch, HiOutlineLocationMarker } from "react-icons/hi";
 
-function SearchBar({ onSelectCity, stations = null }) {
+function SearchBar({ onSelectCity, stations = [] }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
-  const activeSensors = (stations && stations.length > 0) ? stations : sensorLocations;
+  const activeSensors = Array.isArray(stations) ? stations : [];
 
   const results = activeSensors.filter((s) => {
     const stationName = s.station || s.stationName || "";
