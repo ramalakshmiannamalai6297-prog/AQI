@@ -26,6 +26,7 @@ async function getHotspots(limit=10){
             FROM aqi_readings ar
             JOIN pollutant_readings pr
                 ON pr.reading_id = ar.reading_id
+            WHERE UPPER(pr.pollutant_id) != 'CO'
         )
         
         SELECT
@@ -60,6 +61,7 @@ async function getHotspots(limit=10){
           AND rp.previous_value IS NOT NULL
           AND rp.previous_value > 0
           AND rp.current_value > rp.previous_value
+          AND UPPER(rp.pollutant_id) != 'CO'
 
         ORDER BY change_percentage DESC, change_value DESC
         LIMIT ?        

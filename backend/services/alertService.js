@@ -445,6 +445,7 @@ async function sendAlerts() {
       AND pe.change_percentage >= 75
       AND pe.detected_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
       AND pe.detected_at > sub.created_at
+      AND UPPER(pe.pollutant_id) != 'CO'
     ORDER BY pe.detected_at DESC
     `
   );

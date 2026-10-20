@@ -81,7 +81,7 @@ async function runVerification() {
   }
 
   const stationA = candidateStations[0];
-  const stationB = candidateStations[1];
+  const stationB = candidateStations.find(s => s.station_id === 43) || candidateStations[1];
   const sAId = stationA.station_id;
   const sBId = stationB.station_id;
 

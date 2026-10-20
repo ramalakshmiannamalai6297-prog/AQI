@@ -141,6 +141,11 @@ export function calcSubIndex(pollutant, rawValue) {
  * - If a pollutant is missing, skips it.
  * - If both PM2.5 and PM10 are missing, returns null.
  */
+// Pollutants excluded from overall AQI and dominant pollutant selection.
+// data.gov.in provides CO in an unverified scale (median ~31, values often >10 or 100)
+// rather than CPCB's mg/m³ standard (where 2-10 mg/m³ is moderate), causing artificial AQI 500 spikes.
+export const EXCLUDED_FROM_AQI = ["CO"];
+
 export function calcAQI(pollutants) {
   if (!pollutants || typeof pollutants !== "object") {
     return null;
@@ -182,7 +187,7 @@ export function calcAQI(pollutants) {
       const sub = calcSubIndex(key, normalizedInputs[key]);
       if (sub !== null && !isNaN(sub)) {
         subIndices[key] = sub;
-        if (sub > maxSubIndex) {
+        if (!EXCLUDED_FROM_AQI.includes(key) && sub > maxSubIndex) {
           maxSubIndex = sub;
           dominantKey = key;
         }

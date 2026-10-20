@@ -116,6 +116,12 @@ function PollutantCard({ pollutants = {}, pollutantBreakdown = [] }) {
                   {item.safeLimit} {item.unit || "µg/m³"}
                 </span>
               </div>
+
+              {item.name === "CO" && (
+                <div style={{ marginTop: "6px", fontSize: "10px", color: "#94a3b8", fontStyle: "italic" }}>
+                  unit unverified, not used in AQI
+                </div>
+              )}
             </div>
           );
         })}

@@ -9,7 +9,8 @@
     "clear-sample": "node scripts/clearSampleData.js",
     "send-alerts": "node services/alertService.js",
     "send-daily-report": "node scripts/sendDailyReport.js",
-    "migrate-alerts": "node scripts/migrateAlerts.js"
+    "migrate-alerts": "node scripts/migrateAlerts.js",
+    "recompute-aqi": "node scripts/recomputeAqi.js"
   },
   "keywords": [],
   "author": "",

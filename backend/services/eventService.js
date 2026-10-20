@@ -15,6 +15,9 @@ async function detectPollutantSpike(
     pollutantId,
     currentValue
 ){
+    // Exclude CO from spike event detection because data.gov.in CO scale is unverified and unreliable
+    if (String(pollutantId).toUpperCase().trim() === "CO") return null;
+
     const [previousRows] = await db.query(
         `
         SELECT pr.pollutant_avg AS previous_value
@@ -118,6 +121,7 @@ async function getRecentEvents(limit = 10) {
             ON s.station_id = pe.station_id
         JOIN aqi_readings ar
             ON ar.reading_id = pe.reading_id
+        WHERE UPPER(pe.pollutant_id) != 'CO'
 
         ORDER BY pe.detected_at DESC
         LIMIT ?
