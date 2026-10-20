@@ -1,9 +1,9 @@
 const cron = require("node-cron");
 const aqiJob = require("./aqiJob");
 
-// Every 15 minutes
-cron.schedule("*/15 * * * *", async () => {
+// Hourly at minute 5
+cron.schedule("5 * * * *", async () => {
     await aqiJob.execute();
 });
 
-console.log("AQI scheduler started: runs every 15 minutes");
+console.log("AQI scheduler started: runs hourly");
