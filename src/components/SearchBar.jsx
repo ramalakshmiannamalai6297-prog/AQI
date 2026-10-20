@@ -12,9 +12,11 @@ function SearchBar({ onSelectCity, stations = [] }) {
 
   const results = activeSensors.filter((s) => {
     const stationName = s.station || s.stationName || "";
+    const cityName = s.city || "";
+    const stateName = s.state || "";
     return (
-      s.city.toLowerCase().includes(query.toLowerCase()) ||
-      s.state.toLowerCase().includes(query.toLowerCase()) ||
+      cityName.toLowerCase().includes(query.toLowerCase()) ||
+      stateName.toLowerCase().includes(query.toLowerCase()) ||
       stationName.toLowerCase().includes(query.toLowerCase())
     );
   });
@@ -100,7 +102,7 @@ function SearchBar({ onSelectCity, stations = [] }) {
           }}
         >
           {results.length > 0 ? (
-            results.map((sensor) => {
+            results.slice(0, 30).map((sensor) => {
               const cat = getAQICategory(sensor.aqi);
               return (
                 <div

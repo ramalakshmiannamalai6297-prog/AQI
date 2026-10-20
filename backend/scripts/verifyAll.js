@@ -55,6 +55,46 @@ async function runVerification() {
     process.exit(1);
   }
 
+  // Dynamically resolve real stations from database
+  const [candidateStations] = await pool.query(`
+    SELECT s.station_id, s.city, s.station_name
+    FROM stations s
+    WHERE s.station_id IN (
+      SELECT ar.station_id FROM aqi_readings ar
+    )
+    ORDER BY s.station_id ASC
+    LIMIT 10
+  `);
+
+  if (!candidateStations || candidateStations.length < 2) {
+    console.error("Need at least 2 stations with readings in the database.");
+    process.exit(1);
+  }
+
+  const stationA = candidateStations[0];
+  const stationB = candidateStations[1];
+  const sAId = stationA.station_id;
+  const sBId = stationB.station_id;
+
+  // Ensure stationA has at least 6 historical readings for forecast regression
+  const [rCount] = await pool.query(
+    "SELECT COUNT(*) AS cnt FROM aqi_readings WHERE station_id = ?",
+    [sAId]
+  );
+  if (rCount[0].cnt < 6) {
+    const times = ["10:00:00", "11:00:00", "12:00:00", "13:00:00", "14:00:00"];
+    for (let i = 0; i < times.length; i++) {
+      const [r] = await pool.query(
+        "INSERT INTO aqi_readings (station_id, last_update) VALUES (?, ?)",
+        [sAId, `2026-10-20 ${times[i]}`]
+      );
+      await pool.query(
+        "INSERT INTO pollutant_readings (reading_id, pollutant_id, pollutant_min, pollutant_avg, pollutant_max) VALUES (?, 'PM2.5', ?, ?, ?)",
+        [r.insertId, 50 + i * 5, 60 + i * 5, 70 + i * 5]
+      );
+    }
+  }
+
   const results = {
     a: false,
     b: false,
@@ -65,27 +105,27 @@ async function runVerification() {
 
   try {
     // --- ASSERTION A: Recommendations ---
-    console.log("Testing a) Station Recommendations...");
+    console.log(`Testing a) Station Recommendations (stations ${sAId} [${stationA.city}] & ${sBId} [${stationB.city}])...`);
     try {
-      const rec21Res = await fetch(`${BASE_URL}/api/stations/21/recommendations`);
-      if (!rec21Res.ok) throw new Error(`Status ${rec21Res.status}`);
-      const rec21 = await rec21Res.json();
+      const recARes = await fetch(`${BASE_URL}/api/stations/${sAId}/recommendations`);
+      if (!recARes.ok) throw new Error(`Status ${recARes.status}`);
+      const recA = await recARes.json();
 
-      const rec23Res = await fetch(`${BASE_URL}/api/stations/23/recommendations`);
-      if (!rec23Res.ok) throw new Error(`Status ${rec23Res.status}`);
-      const rec23 = await rec23Res.json();
+      const recBRes = await fetch(`${BASE_URL}/api/stations/${sBId}/recommendations`);
+      if (!recBRes.ok) throw new Error(`Status ${recBRes.status}`);
+      const recB = await recBRes.json();
 
-      const hasItems21 = Array.isArray(rec21.recommendations) && rec21.recommendations.length > 0;
-      const advice21Gen = rec21.recommendations.find(r => r.group === "General public")?.advice;
-      const advice23Gen = rec23.recommendations?.find(r => r.group === "General public")?.advice;
+      const hasItemsA = Array.isArray(recA.recommendations) && recA.recommendations.length > 0;
+      const adviceAGen = recA.recommendations?.find(r => r.group === "General public")?.advice;
+      const adviceBGen = recB.recommendations?.find(r => r.group === "General public")?.advice;
 
-      if (hasItems21 && advice21Gen && advice23Gen && advice21Gen !== advice23Gen) {
+      if (hasItemsA && adviceAGen && adviceBGen && adviceAGen !== adviceBGen) {
         results.a = true;
-        console.log(`[PASS] a) /api/stations/21/recommendations returned ${rec21.recommendations.length} recommendations.`);
-        console.log(`       Delhi AQI: ${rec21.aqi} (${rec21.category}) vs Bengaluru AQI: ${rec23.aqi} (${rec23.category})`);
+        console.log(`[PASS] a) /api/stations/${sAId}/recommendations returned ${recA.recommendations.length} recommendations.`);
+        console.log(`       ${stationA.city} AQI: ${recA.aqi} (${recA.category}) vs ${stationB.city} AQI: ${recB.aqi} (${recB.category})`);
         console.log(`       Advice differs appropriately.`);
       } else {
-        console.error(`[FAIL] a) Recommendations check failed. Delhi recs: ${rec21.recommendations?.length}, match: ${advice21Gen === advice23Gen}`);
+        console.error(`[FAIL] a) Recommendations check failed. Station A recs: ${recA.recommendations?.length}, match: ${adviceAGen === adviceBGen}`);
       }
     } catch (err) {
       console.error(`[FAIL] a) Recommendations error:`, err.message);
@@ -93,9 +133,9 @@ async function runVerification() {
     console.log("");
 
     // --- ASSERTION B: Forecast ---
-    console.log("Testing b) Station Forecast (hours=6)...");
+    console.log(`Testing b) Station Forecast (hours=6, station ${sAId})...`);
     try {
-      const forecastRes = await fetch(`${BASE_URL}/api/stations/21/forecast?hours=6`);
+      const forecastRes = await fetch(`${BASE_URL}/api/stations/${sAId}/forecast?hours=6`);
       if (!forecastRes.ok) throw new Error(`Status ${forecastRes.status}`);
       const forecastData = await forecastRes.json();
 
@@ -105,7 +145,7 @@ async function runVerification() {
 
       if (validTrend && isSix && allAqiValid) {
         results.b = true;
-        console.log(`[PASS] b) /api/stations/21/forecast?hours=6 returned exactly 6 items.`);
+        console.log(`[PASS] b) /api/stations/${sAId}/forecast?hours=6 returned exactly 6 items.`);
         console.log(`       Trend: ${forecastData.trend}, All AQI values valid (0-500).`);
         console.log(`       First projection: +1h = ${forecastData.forecast[0].aqi} (${forecastData.forecast[0].category})`);
       } else {
@@ -124,7 +164,7 @@ async function runVerification() {
       const subRes1 = await fetch(`${BASE_URL}/api/alerts/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: testEmail, stationId: 21, minSeverity: "MEDIUM" })
+        body: JSON.stringify({ email: testEmail, stationId: sAId, minSeverity: "MEDIUM" })
       });
       const subData1 = await subRes1.json();
       const sub1Ok = subRes1.ok && subData1.success === true;
@@ -133,7 +173,7 @@ async function runVerification() {
       const subRes2 = await fetch(`${BASE_URL}/api/alerts/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: testEmail, stationId: 21, minSeverity: "HIGH" })
+        body: JSON.stringify({ email: testEmail, stationId: sAId, minSeverity: "HIGH" })
       });
       const subData2 = await subRes2.json();
       const sub2Ok = subRes2.ok && subData2.success === true;
@@ -147,7 +187,7 @@ async function runVerification() {
       const unsubRes = await fetch(`${BASE_URL}/api/alerts/unsubscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: testEmail, stationId: 21 })
+        body: JSON.stringify({ email: testEmail, stationId: sAId })
       });
       const unsubData = await unsubRes.json();
       const unsubOk = unsubRes.ok && unsubData.success === true;
@@ -168,13 +208,13 @@ async function runVerification() {
     console.log("");
 
     // --- ASSERTION D: Weather & Station Health ---
-    console.log("Testing d) Station Weather and Station Health...");
+    console.log(`Testing d) Station Weather and Station Health (station ${sAId})...`);
     try {
-      const weatherRes = await fetch(`${BASE_URL}/api/stations/21/weather`);
+      const weatherRes = await fetch(`${BASE_URL}/api/stations/${sAId}/weather`);
       const weatherData = await weatherRes.json();
       const weatherOk = typeof weatherData.available === "boolean";
 
-      const healthRes = await fetch(`${BASE_URL}/api/stations/21/health`);
+      const healthRes = await fetch(`${BASE_URL}/api/stations/${sAId}/health`);
       const healthData = await healthRes.json();
       const validHealthStatus = ["Online", "Delayed", "Offline", "Unavailable"].includes(healthData.status);
 

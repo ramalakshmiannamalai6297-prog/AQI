@@ -128,7 +128,7 @@ function Home() {
             India Real-Time AQI & Air Quality Map 🇮🇳
           </h1>
           <p style={{ fontSize: "15px", color: "#64748b", margin: "6px 0 0" }}>
-            Interactive geospatial monitoring across 20 major Indian urban centers. Connected to real-time telemetry stream.
+            Interactive geospatial monitoring across continuous Indian monitoring stations. Connected to real-time telemetry stream.
           </p>
         </div>
 

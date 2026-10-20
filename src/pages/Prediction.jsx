@@ -209,8 +209,8 @@ function Prediction() {
 
       {error && (
         <ErrorMessage
-          message={error}
-          subtext="The forecasting engine requires at least 6 historical telemetry readings for this station."
+          message={error.includes("Insufficient") ? "Not enough historical data yet" : error}
+          subtext={error.includes("Insufficient") ? "The forecasting engine requires at least 6 hourly telemetry readings for this station to compute linear regression slope projections. Currently 1 reading is recorded." : "Could not retrieve air quality forecast."}
           onRetry={handleRefresh}
         />
       )}

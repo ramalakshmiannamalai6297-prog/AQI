@@ -74,7 +74,7 @@ function Navbar() {
                 letterSpacing: "0.5px"
               }}
             >
-              LIVE DEMO
+              LIVE DATA
             </span>
           </div>
           <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>

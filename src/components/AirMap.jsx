@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
 import { AQI_CATEGORIES, getAQICategory } from "../utils/aqi.js";
@@ -24,9 +24,27 @@ const createAQIIcon = (aqi, categoryColor) => {
   });
 };
 
-// Component to handle programmatic map view changes (flyTo)
+// Component to handle programmatic map view changes (flyTo) and map size invalidation
 function MapController({ selectedCoords }) {
   const map = useMap();
+
+  useEffect(() => {
+    // Invalidate size on mount and resize to ensure Leaflet renders correctly at the taller size
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [map]);
+
   useEffect(() => {
     if (selectedCoords) {
       map.flyTo(selectedCoords, 10, { duration: 1.5 });
@@ -47,13 +65,22 @@ function AirMap({ onSelectCity, stations = null }) {
   // Filter cities based on search term and category
   const filteredLocations = activeSensors.filter((sensor) => {
     const stationName = sensor.station || sensor.stationName || "";
+    const cityName = sensor.city || "";
+    const stateName = sensor.state || "";
     const matchesSearch =
-      sensor.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sensor.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       stationName.toLowerCase().includes(searchTerm.toLowerCase());
 
+    const hasValidCoords =
+      Number.isFinite(sensor.latitude) &&
+      Number.isFinite(sensor.longitude) &&
+      sensor.latitude !== 0 &&
+      sensor.longitude !== 0;
+
+    if (!hasValidCoords) return false;
     if (activeFilter === "ALL") return matchesSearch;
-    return matchesSearch && sensor.category.toUpperCase() === activeFilter;
+    return matchesSearch && (sensor.category || "").toUpperCase() === activeFilter;
   });
 
   const handleCitySelect = (sensor) => {
@@ -102,7 +129,7 @@ function AirMap({ onSelectCity, stations = null }) {
             />
             <input
               type="text"
-              placeholder="Search 20 Indian cities, states, or stations..."
+              placeholder="Search Indian cities, states, or stations..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -193,13 +220,15 @@ function AirMap({ onSelectCity, stations = null }) {
       </div>
 
       {/* Map Container */}
-      <div style={{ height: "600px", width: "100%", position: "relative" }}>
+      <div style={{ height: "clamp(680px, calc(100vh - 180px), 770px)", width: "100%", position: "relative" }}>
         <MapContainer
           center={[22.5937, 78.9629]}
           zoom={5}
           scrollWheelZoom={true}
+          zoomControl={false}
           style={{ height: "100%", width: "100%", zIndex: 1 }}
         >
+          <ZoomControl position="topright" />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

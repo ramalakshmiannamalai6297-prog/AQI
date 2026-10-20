@@ -54,7 +54,7 @@ function AQIChart({
 }) {
   const [activeTab, setActiveTab] = useState("aqi");
 
-  const hasTrendData = Array.isArray(hourlyTrend) && hourlyTrend.length > 0;
+  const hasTrendData = Array.isArray(hourlyTrend) && hourlyTrend.length >= 2;
   const hasBreakdownData = Array.isArray(pollutantBreakdown) && pollutantBreakdown.length > 0;
 
   return (
@@ -186,10 +186,10 @@ function AQIChart({
         >
           <HiOutlineChartBar size={36} color="#94a3b8" style={{ marginBottom: "10px" }} />
           <h4 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: "700", color: "#334155" }}>
-            No 24-hour history records available
+            Not enough telemetry history yet
           </h4>
-          <p style={{ margin: 0, fontSize: "13px", color: "#64748b", maxWidth: "380px" }}>
-            Telemetry history records for {cityName} will appear here once hourly sensor readings are collected.
+          <p style={{ margin: 0, fontSize: "13px", color: "#64748b", maxWidth: "420px" }}>
+            Currently 1 reading is recorded for {cityName}. 24-hour diurnal trend charts will display once additional hourly sensor readings are collected. Select the "Pollutant Breakdown" tab to inspect current pollutant concentrations.
           </p>
         </div>
       )}

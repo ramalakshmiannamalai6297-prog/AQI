@@ -14,7 +14,7 @@ exports.getAqi = async () => {
     const url =
         "https://api.data.gov.in/resource/" +
         "3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69" +
-        `?api-key=${apiKey}&format=json`;
+        `?api-key=${apiKey}&format=json&limit=5000`;
 
     let lastError;
 
