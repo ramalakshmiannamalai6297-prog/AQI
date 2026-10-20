@@ -64,3 +64,11 @@ CREATE TABLE IF NOT EXISTS alert_log (
     FOREIGN KEY (subscription_id) REFERENCES alert_subscriptions(subscription_id) ON DELETE CASCADE,
     FOREIGN KEY (event_id) REFERENCES pollution_events(event_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS daily_report_log (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    report_date DATE NOT NULL,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_daily_report_email_date (email, report_date)
+);

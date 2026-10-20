@@ -30,11 +30,27 @@ async function migrate() {
     `);
     console.log("Table alert_log verified/created.");
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS daily_report_log (
+          log_id INT AUTO_INCREMENT PRIMARY KEY,
+          email VARCHAR(255) NOT NULL,
+          report_date DATE NOT NULL,
+          sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_daily_report_email_date (email, report_date)
+      );
+    `);
+    console.log("Table daily_report_log verified/created.");
+
     console.log("Migration completed successfully.");
-    process.exit(0);
+    if (require.main === module) {
+      process.exit(0);
+    }
   } catch (err) {
     console.error("Migration failed:", err);
-    process.exit(1);
+    if (require.main === module) {
+      process.exit(1);
+    }
+    throw err;
   }
 }
 

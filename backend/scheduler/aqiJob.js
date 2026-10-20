@@ -1,5 +1,5 @@
 const { ingestAqiData } = require("../services/ingestionService");
-const { sendAlerts } = require("../services/alertService");
+const { sendDailyReports, sendAlerts } = require("../services/alertService");
 
 exports.execute = async () => {
     console.log("Running AQI ingestion job...");
@@ -7,14 +7,22 @@ exports.execute = async () => {
     try {
         await ingestAqiData();
         console.log("AQI Ingestion job completed.");
-
-        // Dispatch email alerts for any detected pollution events
-        try {
-            await sendAlerts();
-        } catch (alertErr) {
-            console.error("Alert dispatch failed:", alertErr.message);
-        }
     } catch (err) {
         console.error("AQI ingestion job failed: ", err.message);
     }
+
+    // 1. Dispatch daily air quality reports (runs at >= 08:00 IST or catches up)
+    try {
+        await sendDailyReports();
+    } catch (reportErr) {
+        console.error("Daily report dispatch failed:", reportErr.message);
+    }
+
+    // 2. Dispatch sudden pollution spike alerts (>= 75% change)
+    try {
+        await sendAlerts();
+    } catch (alertErr) {
+        console.error("Alert dispatch failed:", alertErr.message);
+    }
 };
+

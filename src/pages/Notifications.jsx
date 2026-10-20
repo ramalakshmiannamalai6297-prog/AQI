@@ -265,32 +265,6 @@ function Notifications() {
             </select>
           </div>
 
-          {/* Minimum Severity selector */}
-          <div style={{ flex: "1 1 160px" }}>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
-              Minimum Severity
-            </label>
-            <select
-              value={minSeverity}
-              onChange={(e) => setMinSeverity(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "10px",
-                border: "1px solid #cbd5e1",
-                fontSize: "14px",
-                backgroundColor: "#ffffff",
-                outline: "none",
-                cursor: "pointer",
-                boxSizing: "border-box"
-              }}
-            >
-              <option value="LOW">LOW (All Spikes &gt;30%)</option>
-              <option value="MEDIUM">MEDIUM (Spikes &gt;50%)</option>
-              <option value="HIGH">HIGH (Severe Spikes &gt;100%)</option>
-            </select>
-          </div>
-
           {/* Action Buttons */}
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <button
@@ -355,6 +329,10 @@ function Notifications() {
             </button>
           </div>
         </form>
+
+        <div style={{ marginTop: "16px", fontSize: "13px", color: "#64748b", display: "flex", alignItems: "center", gap: "6px", borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
+          <span style={{ color: "#2563eb", fontWeight: "700" }}>ℹ️</span> You get one daily air quality report at 8:00 AM IST. Extra emails are sent only when a pollutant spikes by 75% or more.
+        </div>
       </div>
 
       {/* Incident Log Feed */}

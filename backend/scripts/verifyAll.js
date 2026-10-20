@@ -4,7 +4,7 @@ const app = require("../app");
 const pool = require("../config/db");
 const alertService = require("../services/alertService");
 
-const PORT = 3000;
+const PORT = process.env.VERIFY_PORT || 3002;
 const BASE_URL = `http://localhost:${PORT}`;
 
 async function runVerification() {
@@ -34,6 +34,15 @@ async function runVerification() {
           UNIQUE KEY uq_sub_event (subscription_id, event_id),
           FOREIGN KEY (subscription_id) REFERENCES alert_subscriptions(subscription_id) ON DELETE CASCADE,
           FOREIGN KEY (event_id) REFERENCES pollution_events(event_id) ON DELETE CASCADE
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS daily_report_log (
+          log_id INT AUTO_INCREMENT PRIMARY KEY,
+          email VARCHAR(255) NOT NULL,
+          report_date DATE NOT NULL,
+          sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_daily_report_email_date (email, report_date)
       );
     `);
   } catch (dbErr) {

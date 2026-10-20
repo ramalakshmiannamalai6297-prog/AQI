@@ -8,6 +8,7 @@
     "seed": "node scripts/seedSampleData.js",
     "clear-sample": "node scripts/clearSampleData.js",
     "send-alerts": "node services/alertService.js",
+    "send-daily-report": "node scripts/sendDailyReport.js",
     "migrate-alerts": "node scripts/migrateAlerts.js"
   },
   "keywords": [],
