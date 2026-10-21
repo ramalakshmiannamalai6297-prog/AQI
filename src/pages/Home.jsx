@@ -70,15 +70,16 @@ function Home() {
   }, []);
 
   // Summary computations from active stations with real CPCB AQI values
+  const validStations = stations.filter((s) => typeof s.aqi === "number" && s.aqi !== null);
   const totalSensors = stations.length;
-  const avgAQI = totalSensors > 0
-    ? Math.round(stations.reduce((acc, s) => acc + (s.aqi || 0), 0) / totalSensors)
+  const avgAQI = validStations.length > 0
+    ? Math.round(validStations.reduce((acc, s) => acc + s.aqi, 0) / validStations.length)
     : 0;
-  const mostPolluted = totalSensors > 0
-    ? [...stations].sort((a, b) => b.aqi - a.aqi)[0]
+  const mostPolluted = validStations.length > 0
+    ? [...validStations].sort((a, b) => b.aqi - a.aqi)[0]
     : null;
-  const cleanest = totalSensors > 0
-    ? [...stations].sort((a, b) => a.aqi - b.aqi)[0]
+  const cleanest = validStations.length > 0
+    ? [...validStations].sort((a, b) => a.aqi - b.aqi)[0]
     : null;
 
   return (
@@ -366,8 +367,8 @@ function Home() {
                 </div>
 
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "24px", fontWeight: "900", color: cat.color }}>
-                    {sensor.aqi}
+                  <span style={{ fontSize: sensor.aqi !== null && sensor.aqi !== undefined ? "24px" : "18px", fontWeight: "900", color: cat.color }}>
+                    {sensor.aqi !== null && sensor.aqi !== undefined ? sensor.aqi : "—"}
                   </span>
                   <span
                     style={{
@@ -384,8 +385,8 @@ function Home() {
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#64748b", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #f1f5f9" }}>
-                  <span>PM2.5: <strong>{sensor.pm25}</strong></span>
-                  <span>PM10: <strong>{sensor.pm10}</strong></span>
+                  <span>PM2.5: <strong>{sensor.pm25 !== null && sensor.pm25 !== undefined ? sensor.pm25 : "No data"}</strong></span>
+                  <span>PM10: <strong>{sensor.pm10 !== null && sensor.pm10 !== undefined ? sensor.pm10 : "No data"}</strong></span>
                   <span>{sensor.temperature || "Live"}</span>
                 </div>
               </Link>

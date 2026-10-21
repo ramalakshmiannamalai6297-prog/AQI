@@ -215,8 +215,8 @@ function Hotspots() {
                     </div>
                   </div>
                   <div style={{ textAlign: "right", fontSize: "12px", color: "#64748b" }}>
-                    <div>PM2.5: <strong style={{ color: "#0f172a" }}>{sensor.pm25} µg/m³</strong></div>
-                    <div>PM10: <strong style={{ color: "#0f172a" }}>{sensor.pm10} µg/m³</strong></div>
+                    <div>PM2.5: <strong style={{ color: "#0f172a" }}>{sensor.pm25 !== null && sensor.pm25 !== undefined ? sensor.pm25 : "No data"}</strong></div>
+                    <div>PM10: <strong style={{ color: "#0f172a" }}>{sensor.pm10 !== null && sensor.pm10 !== undefined ? sensor.pm10 : "No data"}</strong></div>
                   </div>
                 </div>
               </div>

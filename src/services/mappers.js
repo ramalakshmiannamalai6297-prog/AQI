@@ -18,32 +18,46 @@ export function formatTimeAgo(dateString) {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function parseVal(v) {
+  if (v === null || v === undefined || v === "NA" || v === "na") return null;
+  if (typeof v === "object") {
+    const raw = v.avg ?? v.value ?? v.val;
+    if (raw === null || raw === undefined || raw === "NA" || raw === "na") return null;
+    const n = Number(raw);
+    return isNaN(n) || !isFinite(n) ? null : n;
+  }
+  const n = Number(v);
+  return isNaN(n) || !isFinite(n) ? null : n;
+}
+
 /**
  * Maps a single backend station to the shape used by UI components
  */
 export function mapBackendStationToFrontend(backendStation) {
   if (!backendStation) return null;
 
-  const pm25 = Number(backendStation.pollutants?.["PM2.5"] ?? 0);
-  const pm10 = Number(backendStation.pollutants?.["PM10"] ?? 0);
-  const no2 = Number(backendStation.pollutants?.["NO2"] ?? 0);
-  const so2 = Number(backendStation.pollutants?.["SO2"] ?? 0);
-  const co = Number(backendStation.pollutants?.["CO"] ?? 0);
-  const o3 = Number(backendStation.pollutants?.["OZONE"] ?? 0);
+  const rawPollutants = backendStation.pollutants || {};
+  const pm25 = parseVal(rawPollutants["PM2.5"] ?? rawPollutants["pm25"]);
+  const pm10 = parseVal(rawPollutants["PM10"] ?? rawPollutants["pm10"]);
+  const no2 = parseVal(rawPollutants["NO2"] ?? rawPollutants["no2"]);
+  const so2 = parseVal(rawPollutants["SO2"] ?? rawPollutants["so2"]);
+  const co = parseVal(rawPollutants["CO"] ?? rawPollutants["co"]);
+  const o3 = parseVal(rawPollutants["OZONE"] ?? rawPollutants["O3"] ?? rawPollutants["o3"]);
+  const nh3 = parseVal(rawPollutants["NH3"] ?? rawPollutants["nh3"]);
 
-  const pollutantsMap = {
-    "PM2.5": pm25,
-    "PM10": pm10,
-    "NO2": no2,
-    "SO2": so2,
-    "CO": co,
-    "OZONE": o3
-  };
+  const pollutantsMap = {};
+  if (pm25 !== null) pollutantsMap["PM2.5"] = pm25;
+  if (pm10 !== null) pollutantsMap["PM10"] = pm10;
+  if (no2 !== null) pollutantsMap["NO2"] = no2;
+  if (so2 !== null) pollutantsMap["SO2"] = so2;
+  if (co !== null) pollutantsMap["CO"] = co;
+  if (o3 !== null) pollutantsMap["OZONE"] = o3;
+  if (nh3 !== null) pollutantsMap["NH3"] = nh3;
 
   // Real Indian CPCB AQI calculation from real pollutant values
   const aqiResult = calcAQI(backendStation.pollutants) || calcAQI(pollutantsMap);
-  const aqi = aqiResult ? aqiResult.aqi : 0;
-  const dominating = aqiResult ? aqiResult.dominantPollutant : "PM2.5";
+  const aqi = aqiResult ? aqiResult.aqi : null;
+  const dominating = aqiResult ? aqiResult.dominantPollutant : "Unavailable";
   const categoryInfo = getAQICategory(aqi);
 
   let lastUpdatedFormatted = "Live";
@@ -52,6 +66,19 @@ export function mapBackendStationToFrontend(backendStation) {
     if (!isNaN(d.getTime())) {
       lastUpdatedFormatted = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
+  }
+
+  // Pollutant breakdown for charts and cards (no units, no safeLimit)
+  const breakdown = [
+    { name: "PM2.5", value: pm25 },
+    { name: "PM10", value: pm10 },
+    { name: "NO₂", value: no2 },
+    { name: "SO₂", value: so2 },
+    { name: "CO", value: co },
+    { name: "O₃", value: o3 }
+  ];
+  if (nh3 !== null) {
+    breakdown.push({ name: "NH₃", value: nh3 });
   }
 
   return {
@@ -79,22 +106,17 @@ export function mapBackendStationToFrontend(backendStation) {
     no2,
     so2,
     o3,
+    nh3,
     pollutants: {
       pm25,
       pm10,
       co,
       no2,
       so2,
-      o3
+      o3,
+      nh3
     },
-    pollutantBreakdown: [
-      { name: "PM2.5", value: pm25, safeLimit: 60, unit: "µg/m³" },
-      { name: "PM10", value: pm10, safeLimit: 100, unit: "µg/m³" },
-      { name: "NO₂", value: no2, safeLimit: 80, unit: "µg/m³" },
-      { name: "SO₂", value: so2, safeLimit: 80, unit: "µg/m³" },
-      { name: "CO", value: co, safeLimit: 2.0, unit: "mg/m³" },
-      { name: "O₃", value: o3, safeLimit: 100, unit: "µg/m³" }
-    ]
+    pollutantBreakdown: breakdown
   };
 }
 
@@ -112,20 +134,20 @@ export function mapBackendHistoryToHourlyTrend(historyList, station = null) {
       ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
       : `Reading ${index + 1}`;
 
-    const pm25 = Math.round(Number(item.pollutants?.["PM2.5"]?.avg ?? item.pollutants?.["PM2.5"] ?? 0));
-    const pm10 = Math.round(Number(item.pollutants?.["PM10"]?.avg ?? item.pollutants?.["PM10"] ?? 0));
+    const pm25 = parseVal(item.pollutants?.["PM2.5"]);
+    const pm10 = parseVal(item.pollutants?.["PM10"]);
     
     // Real Indian CPCB AQI calculation for every history timestamp
     const aqiResult = calcAQI(item.pollutants);
-    const aqi = aqiResult ? aqiResult.aqi : (station?.aqi ?? 0);
-    const dominant = aqiResult ? aqiResult.dominantPollutant : (station?.dominatingPollutant || "PM2.5");
+    const aqi = aqiResult ? aqiResult.aqi : null;
+    const dominant = aqiResult ? aqiResult.dominantPollutant : "Unavailable";
 
     return {
       time,
       aqi,
       dominantPollutant: dominant,
-      pm25,
-      pm10,
+      pm25: pm25 !== null ? Math.round(pm25) : null,
+      pm10: pm10 !== null ? Math.round(pm10) : null,
       readingId: Number(item.readingId),
       lastUpdate: item.lastUpdate,
       pollutants: item.pollutants
@@ -143,9 +165,9 @@ export function mapBackendHotspot(hotspot) {
   const changeValue = Number(hotspot.change_value);
   const changePercentage = Number(hotspot.change_percentage);
 
-  // Calculate real sub-index / AQI for hotspot
+  // Sub-index is currentValue directly
   const sub = calcSubIndex(hotspot.pollutant_id, currentValue);
-  const aqi = sub !== null ? sub : 0;
+  const aqi = sub !== null ? sub : null;
   const cat = getAQICategory(aqi);
 
   return {
@@ -167,8 +189,8 @@ export function mapBackendHotspot(hotspot) {
     categoryColor: cat.color,
     categoryBg: cat.bg,
     categoryText: cat.text,
-    pm25: hotspot.pollutant_id === "PM2.5" ? Math.round(currentValue) : 0,
-    pm10: hotspot.pollutant_id === "PM10" ? Math.round(currentValue) : 0,
+    pm25: hotspot.pollutant_id === "PM2.5" ? Math.round(currentValue) : null,
+    pm10: hotspot.pollutant_id === "PM10" ? Math.round(currentValue) : null,
     trend: `+${changePercentage.toFixed(1)}% ${hotspot.pollutant_id}`
   };
 }
@@ -192,12 +214,8 @@ export function mapBackendEvent(event) {
   const title = `${event.severity || "POLLUTANT"} SPIKE: ${event.city} (${event.pollutant_id})`;
   
   let message = event.message;
-  if (message) {
-    message = message.replace(/from\s+([0-9.]+)\s+to\s+([0-9.]+)/gi, (_, p1, p2) => {
-      return `from ${Number(p1).toFixed(1)} to ${Number(p2).toFixed(1)}`;
-    });
-  } else {
-    message = `${event.pollutant_id} increased from ${previousValue.toFixed(1)} to ${currentValue.toFixed(1)} at ${event.station_name} (+${changePercentage.toFixed(1)}%).`;
+  if (!message) {
+    message = `${event.pollutant_id} AQI rose from ${previousValue.toFixed(1)} to ${currentValue.toFixed(1)}`;
   }
 
   return {

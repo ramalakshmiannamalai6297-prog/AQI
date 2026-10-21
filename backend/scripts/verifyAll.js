@@ -101,6 +101,14 @@ async function runVerification() {
         "INSERT INTO pollutant_readings (reading_id, pollutant_id, pollutant_min, pollutant_avg, pollutant_max) VALUES (?, 'PM2.5', ?, ?, ?)",
         [r.insertId, 50 + i * 5, 60 + i * 5, 70 + i * 5]
       );
+      await pool.query(
+        "INSERT INTO pollutant_readings (reading_id, pollutant_id, pollutant_min, pollutant_avg, pollutant_max) VALUES (?, 'PM10', ?, ?, ?)",
+        [r.insertId, 40 + i * 5, 50 + i * 5, 60 + i * 5]
+      );
+      await pool.query(
+        "INSERT INTO pollutant_readings (reading_id, pollutant_id, pollutant_min, pollutant_avg, pollutant_max) VALUES (?, 'NO2', ?, ?, ?)",
+        [r.insertId, 20 + i * 5, 25 + i * 5, 30 + i * 5]
+      );
     }
   }
 

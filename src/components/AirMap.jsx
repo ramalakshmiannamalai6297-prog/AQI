@@ -11,11 +11,12 @@ import {
 
 // Create custom colored DivIcon with the AQI number inside
 const createAQIIcon = (aqi, categoryColor) => {
+  const isUnavailable = aqi === null || aqi === undefined || isNaN(Number(aqi));
   return L.divIcon({
     className: "aqi-map-marker",
     html: `
-      <div class="aqi-marker-bubble" style="background-color: ${categoryColor};">
-        <span>${aqi}</span>
+      <div class="aqi-marker-bubble" style="background-color: ${isUnavailable ? "#94a3b8" : categoryColor};">
+        <span style="font-size: ${isUnavailable ? "10px" : "13px"};">${isUnavailable ? "N/A" : aqi}</span>
       </div>
     `,
     iconSize: [38, 38],
@@ -298,15 +299,15 @@ function AirMap({ onSelectCity, stations = null }) {
                           Air Quality Index
                         </span>
                         <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                          <span style={{ fontSize: "32px", fontWeight: "800", color: cat.color, lineHeight: 1 }}>
-                            {sensor.aqi}
+                          <span style={{ fontSize: sensor.aqi !== null && sensor.aqi !== undefined ? "32px" : "22px", fontWeight: "800", color: cat.color, lineHeight: 1 }}>
+                            {sensor.aqi !== null && sensor.aqi !== undefined ? sensor.aqi : "—"}
                           </span>
                           <span style={{ fontSize: "11px", color: "#64748b" }}>AQI (IN)</span>
                         </div>
                       </div>
                       <div style={{ textAlign: "right", fontSize: "11px", color: "#64748b" }}>
                         <div>Main Pollutant</div>
-                        <strong style={{ color: "#0f172a", fontSize: "13px" }}>{sensor.dominatingPollutant}</strong>
+                        <strong style={{ color: "#0f172a", fontSize: "13px" }}>{sensor.dominatingPollutant || "Unavailable"}</strong>
                       </div>
                     </div>
 
@@ -322,13 +323,13 @@ function AirMap({ onSelectCity, stations = null }) {
                       <div style={{ background: "#ffffff", border: "1px solid #f1f5f9", padding: "6px 10px", borderRadius: "8px" }}>
                         <span style={{ fontSize: "10px", color: "#64748b" }}>PM2.5</span>
                         <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>
-                          {sensor.pm25} <span style={{ fontSize: "10px", fontWeight: "400" }}>µg/m³</span>
+                          {sensor.pm25 !== null && sensor.pm25 !== undefined ? sensor.pm25 : "No data"}
                         </div>
                       </div>
                       <div style={{ background: "#ffffff", border: "1px solid #f1f5f9", padding: "6px 10px", borderRadius: "8px" }}>
                         <span style={{ fontSize: "10px", color: "#64748b" }}>PM10</span>
                         <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>
-                          {sensor.pm10} <span style={{ fontSize: "10px", fontWeight: "400" }}>µg/m³</span>
+                          {sensor.pm10 !== null && sensor.pm10 !== undefined ? sensor.pm10 : "No data"}
                         </div>
                       </div>
                       <div style={{ background: "#ffffff", border: "1px solid #f1f5f9", padding: "6px 10px", borderRadius: "8px" }}>

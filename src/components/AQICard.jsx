@@ -122,7 +122,7 @@ function AQICard({ data, weather = null, health = null }) {
               backgroundColor: categoryInfo.color
             }}
           />
-          Air Quality is {categoryInfo.label}
+          {data.aqi !== null && data.aqi !== undefined ? `Air Quality is ${categoryInfo.label}` : "AQI unavailable (insufficient data)"}
         </div>
       </div>
 
@@ -152,7 +152,7 @@ function AQICard({ data, weather = null, health = null }) {
               justifyContent: "center"
             }}
           >
-            <span style={{ fontSize: "36px", fontWeight: "900", color: categoryInfo.color, lineHeight: 1 }}>
+            <span style={{ fontSize: data.aqi !== null && data.aqi !== undefined ? "36px" : "24px", fontWeight: "900", color: categoryInfo.color, lineHeight: 1 }}>
               {data.aqi !== null && data.aqi !== undefined ? data.aqi : "—"}
             </span>
             <span style={{ fontSize: "10px", fontWeight: "700", color: categoryInfo.text, textTransform: "uppercase" }}>
@@ -162,7 +162,7 @@ function AQICard({ data, weather = null, health = null }) {
           <div>
             <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>DOMINANT POLLUTANT</span>
             <h4 style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a", margin: "2px 0" }}>
-              {data.dominatingPollutant || "PM2.5"}
+              {data.aqi !== null && data.aqi !== undefined ? (data.dominatingPollutant || "Unavailable") : "Unavailable"}
             </h4>
             <span style={{ fontSize: "12px", color: "#dc2626", fontWeight: "500", display: "flex", alignItems: "center", gap: "4px" }}>
               <HiOutlineTrendingUp size={14} /> {data.trend || "Live Tracking"}

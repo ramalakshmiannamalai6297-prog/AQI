@@ -6,18 +6,19 @@ import {
   Line,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-  ReferenceLine
+  ResponsiveContainer
 } from "recharts";
+import { getAQICategory } from "../utils/aqi.js";
 import { LoadingSpinner, ErrorMessage } from "./StatusState";
 import { HiOutlineChartBar } from "react-icons/hi";
 
-// Custom tooltip for charts
+// Custom tooltip for charts (no concentration units)
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
@@ -35,7 +36,7 @@ const CustomTooltip = ({ active, payload, label }) => {
         <p style={{ margin: "0 0 4px", fontWeight: "700", color: "#94a3b8" }}>{label}</p>
         {payload.map((entry, index) => (
           <p key={`item-${index}`} style={{ margin: "2px 0", color: entry.color || "#38bdf8", fontWeight: "600" }}>
-            {entry.name}: {entry.value} {entry.unit || (entry.name === "AQI" ? "AQI" : "µg/m³")}
+            {entry.name}: {entry.value}
           </p>
         ))}
       </div>
@@ -54,8 +55,14 @@ function AQIChart({
 }) {
   const [activeTab, setActiveTab] = useState("aqi");
 
+  const validBreakdown = Array.isArray(pollutantBreakdown)
+    ? pollutantBreakdown.filter(
+        (item) => item.value !== null && item.value !== undefined && !isNaN(Number(item.value))
+      )
+    : [];
+
   const hasTrendData = Array.isArray(hourlyTrend) && hourlyTrend.length >= 2;
-  const hasBreakdownData = Array.isArray(pollutantBreakdown) && pollutantBreakdown.length > 0;
+  const hasBreakdownData = validBreakdown.length > 0;
 
   return (
     <div
@@ -84,7 +91,7 @@ function AQIChart({
             📈 Air Quality Trends & Analytics
           </h3>
           <p style={{ fontSize: "13px", color: "#64748b", margin: "2px 0 0" }}>
-            24-hour diurnal patterns & pollutant profile for {cityName}
+            24-hour diurnal patterns & pollutant AQI sub-indices for {cityName}
           </p>
         </div>
 
@@ -189,7 +196,7 @@ function AQIChart({
             Not enough telemetry history yet
           </h4>
           <p style={{ margin: 0, fontSize: "13px", color: "#64748b", maxWidth: "420px" }}>
-            Currently 1 reading is recorded for {cityName}. 24-hour diurnal trend charts will display once additional hourly sensor readings are collected. Select the "Pollutant Breakdown" tab to inspect current pollutant concentrations.
+            Currently 1 reading is recorded for {cityName}. 24-hour diurnal trend charts will display once additional hourly sensor readings are collected. Select the "Pollutant Breakdown" tab to inspect current pollutant AQI sub-indices.
           </p>
         </div>
       )}
@@ -199,7 +206,7 @@ function AQIChart({
         <div style={{ width: "100%", height: "320px" }}>
           {activeTab === "aqi" && hasTrendData && (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hourlyTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <AreaChart data={hourlyTrend} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="aqiColor" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4} />
@@ -208,9 +215,13 @@ function AQIChart({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
+                <YAxis
+                  stroke="#94a3b8"
+                  fontSize={12}
+                  tickLine={false}
+                  label={{ value: "AQI", angle: -90, position: "insideLeft", style: { textAnchor: "middle", fill: "#94a3b8", fontSize: 12 } }}
+                />
                 <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine y={100} stroke="#10b981" strokeDasharray="4 4" label={{ value: "Satisfactory Limit (100)", fill: "#10b981", fontSize: 11 }} />
                 <Area type="monotone" dataKey="aqi" name="AQI" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#aqiColor)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -218,28 +229,41 @@ function AQIChart({
 
           {activeTab === "pm" && hasTrendData && (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={hourlyTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <LineChart data={hourlyTrend} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
+                <YAxis
+                  stroke="#94a3b8"
+                  fontSize={12}
+                  tickLine={false}
+                  label={{ value: "AQI sub-index", angle: -90, position: "insideLeft", style: { textAnchor: "middle", fill: "#94a3b8", fontSize: 12 } }}
+                />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ paddingTop: "10px", fontSize: "13px" }} />
-                <Line type="monotone" dataKey="pm25" name="PM2.5 (Fine Particulate)" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="pm10" name="PM10 (Coarse Dust)" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="pm25" name="PM2.5" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="pm10" name="PM10" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           )}
 
           {activeTab === "breakdown" && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pollutantBreakdown} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <BarChart data={validBreakdown} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
+                <YAxis
+                  domain={[0, 500]}
+                  stroke="#94a3b8"
+                  fontSize={12}
+                  tickLine={false}
+                  label={{ value: "AQI sub-index", angle: -90, position: "insideLeft", style: { textAnchor: "middle", fill: "#94a3b8", fontSize: 12 } }}
+                />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: "10px", fontSize: "13px" }} />
-                <Bar dataKey="value" name="Current Concentration" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="safeLimit" name="NAAQS Safe Limit" fill="#cbd5e1" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="value" name="AQI Sub-Index" radius={[6, 6, 0, 0]}>
+                  {validBreakdown.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={getAQICategory(entry.value).color} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}

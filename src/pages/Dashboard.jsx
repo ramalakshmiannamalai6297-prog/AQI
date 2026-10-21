@@ -299,7 +299,7 @@ function Dashboard() {
             >
               {stations.map((sensor) => (
                 <option key={sensor.stationId || sensor.id} value={sensor.stationId || sensor.id}>
-                  {sensor.city} — {sensor.station || sensor.stationName} ({sensor.aqi} AQI - {sensor.category})
+                  {sensor.city} — {sensor.station || sensor.stationName} ({sensor.aqi !== null && sensor.aqi !== undefined ? `${sensor.aqi} AQI - ${sensor.category}` : "AQI unavailable"})
                 </option>
               ))}
             </select>
@@ -354,10 +354,10 @@ function Dashboard() {
           time={activeEvent.time}
         />
       ) : (
-        displayStation.aqi > 200 && (
+        typeof displayStation.aqi === "number" && displayStation.aqi > 200 && (
           <EventCard
             city={displayStation.city}
-            message={`Elevated ambient pollution concentrations (${displayStation.aqi} AQI - ${displayStation.category}). Heavy particulate loading detected.`}
+            message={`Elevated ambient pollution levels (${displayStation.aqi} AQI - ${displayStation.category}). Heavy particulate loading detected.`}
             severity={displayStation.aqi > 400 ? "HIGH" : "MEDIUM"}
             time="Live Alert"
           />

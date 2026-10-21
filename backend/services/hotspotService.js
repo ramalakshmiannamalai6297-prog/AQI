@@ -1,75 +1,84 @@
-const db = require("../config/db")
+const db = require("../config/db");
+const { EXCLUDED_FROM_AQI } = require("../utils/aqi");
 
-async function getHotspots(limit=10){
-    const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50)
+async function getHotspots(limit = 10) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
 
-    const [rows] = await db.query(
-        `
-        WITH ranked_pollutants AS (
-            SELECT
-                ar.station_id,
-                ar.reading_id,
-                ar.last_update,
-                pr.pollutant_id,
-                pr.pollutant_avg AS current_value,
+  let excludePr = "";
+  let excludeRp = "";
+  if (EXCLUDED_FROM_AQI.length > 0) {
+    const list = EXCLUDED_FROM_AQI.map(k => `'${k}'`).join(",");
+    excludePr = `WHERE UPPER(pr.pollutant_id) NOT IN (${list})`;
+    excludeRp = `AND UPPER(rp.pollutant_id) NOT IN (${list})`;
+  }
 
-                LAG(pr.pollutant_avg) OVER (
-                    PARTITION BY ar.station_id, pr.pollutant_id
-                    ORDER BY ar.last_update
-                ) AS previous_value,
+  const [rows] = await db.query(
+    `
+    WITH ranked_pollutants AS (
+      SELECT
+        ar.station_id,
+        ar.reading_id,
+        ar.last_update,
+        pr.pollutant_id,
+        pr.pollutant_avg AS current_value,
 
-                ROW_NUMBER() OVER (
-                    PARTITION BY ar.station_id, pr.pollutant_id
-                    ORDER BY ar.last_update DESC
-                ) AS latest_rank
+        LAG(pr.pollutant_avg) OVER (
+          PARTITION BY ar.station_id, pr.pollutant_id
+          ORDER BY ar.last_update
+        ) AS previous_value,
 
-            FROM aqi_readings ar
-            JOIN pollutant_readings pr
-                ON pr.reading_id = ar.reading_id
-            WHERE UPPER(pr.pollutant_id) != 'CO'
-        )
-        
-        SELECT
-            s.station_id,
-            s.station_name,
-            s.city,
-            s.state,
-            s.latitude,
-            s.longitude,
+        ROW_NUMBER() OVER (
+          PARTITION BY ar.station_id, pr.pollutant_id
+          ORDER BY ar.last_update DESC
+        ) AS latest_rank
 
-            rp.pollutant_id,
-            rp.previous_value,
-            rp.current_value,
-
-            (rp.current_value - rp.previous_value) AS change_value,
-
-            ROUND(
-                (
-                    (rp.current_value - rp.previous_value)
-                    / rp.previous_value
-                ) * 100,
-                2
-            ) AS change_percentage,
-
-            rp.last_update
-
-        FROM ranked_pollutants rp
-        JOIN stations s
-            ON s.station_id = rp.station_id
-
-        WHERE rp.latest_rank = 1
-          AND rp.previous_value IS NOT NULL
-          AND rp.previous_value > 0
-          AND rp.current_value > rp.previous_value
-          AND UPPER(rp.pollutant_id) != 'CO'
-
-        ORDER BY change_percentage DESC, change_value DESC
-        LIMIT ?        
-        `,
-        [safeLimit]
+      FROM aqi_readings ar
+      JOIN pollutant_readings pr
+        ON pr.reading_id = ar.reading_id
+      ${excludePr}
     )
+    
+    SELECT
+      s.station_id,
+      s.station_name,
+      s.city,
+      s.state,
+      s.latitude,
+      s.longitude,
 
-    return rows;
+      rp.pollutant_id,
+      rp.previous_value,
+      rp.current_value,
+
+      (rp.current_value - rp.previous_value) AS change_value,
+
+      ROUND(
+        (
+          (rp.current_value - rp.previous_value)
+          / rp.previous_value
+        ) * 100,
+        2
+      ) AS change_percentage,
+
+      rp.last_update
+
+    FROM ranked_pollutants rp
+    JOIN stations s
+      ON s.station_id = rp.station_id
+
+    WHERE rp.latest_rank = 1
+      AND rp.previous_value IS NOT NULL
+      AND rp.previous_value > 0
+      AND rp.current_value > rp.previous_value
+      ${excludeRp}
+
+    ORDER BY change_percentage DESC, change_value DESC
+    LIMIT ?
+    `,
+    [safeLimit]
+  );
+
+  return rows;
 }
 
-module.exports = { getHotspots }
+module.exports = { getHotspots };

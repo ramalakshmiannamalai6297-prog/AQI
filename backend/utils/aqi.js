@@ -1,5 +1,12 @@
 /**
  * Indian CPCB (Central Pollution Control Board) AQI Calculation Utility (CommonJS)
+ *
+ * Official CPCB AQI Rules:
+ * - Feed values from data.gov.in are already CPCB AQI sub-indices (0-500) per pollutant.
+ * - Overall AQI is the HIGHEST sub-index among available pollutants (no breakpoint conversion).
+ * - Dominant pollutant is the pollutant with that highest value.
+ * - CPCB Data Requirement: At least 3 pollutants with real numbers, and at least one must be PM2.5 or PM10.
+ *   Otherwise, AQI is unavailable (insufficient data).
  */
 
 const AQI_CATEGORIES = {
@@ -11,6 +18,7 @@ const AQI_CATEGORIES = {
   SEVERE: { label: "Severe", min: 401, max: 500, color: "#7f1d1d", bg: "#fdf2f8", text: "#701a75" }
 };
 
+// Kept for backward compatibility with external references; feed values are already sub-indices
 const POLLUTANT_BREAKPOINTS = {
   "PM2.5": [
     { cLow: 0, cHigh: 30, iLow: 0, iHigh: 50 },
@@ -71,64 +79,59 @@ function normalizePollutantKey(key) {
   if (k === "SO2") return "SO2";
   if (k === "CO") return "CO";
   if (k === "OZONE" || k === "O3") return "OZONE";
-  return null;
+  if (k === "NH3") return "NH3";
+  if (k === "PB") return "PB";
+  return k;
 }
 
 function extractValue(val) {
   if (val === null || val === undefined) return null;
   if (typeof val === "object") {
     const raw = val.avg ?? val.value ?? val.val ?? val.currentValue ?? val.current_value;
-    if (raw === null || raw === undefined) return null;
+    if (raw === null || raw === undefined || raw === "NA" || raw === "na") return null;
     const num = Number(raw);
-    return isNaN(num) ? null : num;
+    return isNaN(num) || !isFinite(num) ? null : num;
   }
+  if (val === "NA" || val === "na") return null;
   const num = Number(val);
-  return isNaN(num) ? null : num;
+  return isNaN(num) || !isFinite(num) ? null : num;
 }
 
+/**
+ * Returns the pollutant sub-index. Feed values from data.gov.in are already
+ * CPCB AQI sub-indices (0-500), so no breakpoint interpolation is performed.
+ */
 function calcSubIndex(pollutant, rawValue) {
   const val = extractValue(rawValue);
   if (val === null || isNaN(val) || val < 0) return null;
-
-  const key = normalizePollutantKey(pollutant);
-  if (!key) return null;
-
-  const bands = POLLUTANT_BREAKPOINTS[key];
-  if (!bands || !Array.isArray(bands)) return null;
-
-  for (let i = 0; i < bands.length; i++) {
-    const b = bands[i];
-    if (val <= b.cHigh || i === bands.length - 1) {
-      if (val >= b.cHigh && i === bands.length - 1) {
-        const calc = b.iLow + ((b.iHigh - b.iLow) / (b.cHigh - b.cLow)) * (val - b.cLow);
-        return Math.min(500, Math.max(0, Math.round(calc)));
-      }
-      const calc = b.iLow + ((b.iHigh - b.iLow) / (b.cHigh - b.cLow)) * (val - b.cLow);
-      return Math.min(500, Math.max(0, Math.round(calc)));
-    }
-  }
-
-  return 500;
+  return Math.min(500, Math.max(0, Math.round(val)));
 }
 
 // Pollutants excluded from overall AQI and dominant pollutant selection.
-// data.gov.in provides CO in an unverified scale (median ~31, values often >10 or 100)
-// rather than CPCB's mg/m³ standard (where 2-10 mg/m³ is moderate), causing artificial AQI 500 spikes.
-const EXCLUDED_FROM_AQI = ["CO"];
+// Empty list: CO is a valid CPCB AQI sub-index (0-500) and counts toward AQI.
+const EXCLUDED_FROM_AQI = [];
 
+/**
+ * Calculates overall CPCB AQI:
+ * - Data requirement: at least 3 pollutants with real numbers, AND at least one of them must be PM2.5 or PM10.
+ * - Overall AQI is the HIGHEST sub-index among available pollutants (no breakpoint conversion).
+ * - Dominant pollutant is the pollutant with that highest value.
+ * Returns null if data requirements are not met.
+ */
 function calcAQI(pollutants) {
   if (!pollutants || typeof pollutants !== "object") {
     return null;
   }
 
-  const standardKeys = ["PM2.5", "PM10", "NO2", "SO2", "CO", "OZONE"];
   const displayNames = {
     "PM2.5": "PM2.5",
     "PM10": "PM10",
     "NO2": "NO₂",
     "SO2": "SO₂",
     "CO": "CO",
-    "OZONE": "O₃"
+    "OZONE": "O₃",
+    "NH3": "NH₃",
+    "PB": "Pb"
   };
 
   const normalizedInputs = {};
@@ -136,14 +139,19 @@ function calcAQI(pollutants) {
     const normKey = normalizePollutantKey(rawKey);
     if (normKey) {
       const extracted = extractValue(rawVal);
-      if (extracted !== null && !isNaN(extracted)) {
-        normalizedInputs[normKey] = extracted;
+      if (extracted !== null && !isNaN(extracted) && extracted >= 0) {
+        normalizedInputs[normKey] = Math.min(500, Math.max(0, Math.round(extracted)));
       }
     }
   }
 
+  // CPCB Data Requirement:
+  // 1. Must have at least 3 pollutants with real numbers
+  // 2. At least one must be PM2.5 or PM10
+  const validPollutantCount = Object.keys(normalizedInputs).length;
   const hasPM = normalizedInputs["PM2.5"] !== undefined || normalizedInputs["PM10"] !== undefined;
-  if (!hasPM) {
+
+  if (validPollutantCount < 3 || !hasPM) {
     return null;
   }
 
@@ -151,15 +159,12 @@ function calcAQI(pollutants) {
   let dominantKey = null;
   const subIndices = {};
 
-  for (const key of standardKeys) {
-    if (normalizedInputs[key] !== undefined) {
-      const sub = calcSubIndex(key, normalizedInputs[key]);
-      if (sub !== null && !isNaN(sub)) {
-        subIndices[key] = sub;
-        if (!EXCLUDED_FROM_AQI.includes(key) && sub > maxSubIndex) {
-          maxSubIndex = sub;
-          dominantKey = key;
-        }
+  for (const [key, val] of Object.entries(normalizedInputs)) {
+    subIndices[key] = val;
+    if (!EXCLUDED_FROM_AQI.includes(key)) {
+      if (val > maxSubIndex) {
+        maxSubIndex = val;
+        dominantKey = key;
       }
     }
   }
@@ -180,7 +185,7 @@ function getAQICategory(aqi) {
   const num = Number(aqi);
   if (isNaN(num) || aqi === null || aqi === undefined) {
     return {
-      label: "N/A",
+      label: "AQI unavailable (insufficient data)",
       min: 0,
       max: 0,
       color: "#94a3b8",
@@ -198,6 +203,10 @@ function getAQICategory(aqi) {
 }
 
 function generateRecommendations(aqi, dominantKey) {
+  if (aqi === null || aqi === undefined || isNaN(Number(aqi))) {
+    return [];
+  }
+
   const cat = getAQICategory(aqi);
   const label = cat.label;
   const normKey = normalizePollutantKey(dominantKey);
@@ -329,13 +338,13 @@ function generateRecommendations(aqi, dominantKey) {
     if (label === "Good") {
       dominantTipAdvice = `${normKey} is the primary contributor today, but levels are well within safe, clean limits. No protective measures needed.`;
     } else if (label === "Satisfactory") {
-      dominantTipAdvice = `${normKey} is the dominant pollutant today, but concentrations remain within satisfactory limits.`;
+      dominantTipAdvice = `${normKey} is the dominant pollutant today, but levels remain within satisfactory limits.`;
     } else if (label === "Moderate") {
       dominantTipAdvice = `Particulate matter (${normKey}) is elevated. Sensitive individuals should avoid dusty roadside areas and consider wearing a mask outdoors.`;
     } else if (label === "Poor") {
       dominantTipAdvice = `High ${normKey} particulate levels. Wear an N95 mask outdoors and avoid dusty roads and high-traffic zones.`;
     } else if (label === "Very Poor") {
-      dominantTipAdvice = `Dangerous ${normKey} particulate concentrations. N95 mask is required for any outdoor exposure; minimize time outdoors.`;
+      dominantTipAdvice = `Dangerous ${normKey} particulate levels. N95 mask is required for any outdoor exposure; minimize time outdoors.`;
     } else {
       dominantTipAdvice = `Hazardous ${normKey} particulate levels. Emergency N95/N99 protection required outdoors; remain strictly indoors with HEPA filtration.`;
     }
@@ -349,7 +358,7 @@ function generateRecommendations(aqi, dominantKey) {
     } else if (label === "Poor") {
       dominantTipAdvice = `High ${normKey} traffic emissions. Avoid congested intersections, highways, and diesel exhaust corridors.`;
     } else if (label === "Very Poor") {
-      dominantTipAdvice = `Dangerous combustion gas concentrations. Strictly avoid traffic-heavy corridors and industrial zones.`;
+      dominantTipAdvice = `Dangerous combustion gas levels. Strictly avoid traffic-heavy corridors and industrial zones.`;
     } else {
       dominantTipAdvice = `Hazardous toxic combustion gas levels. Remain indoors with sealed ventilation.`;
     }
@@ -371,7 +380,7 @@ function generateRecommendations(aqi, dominantKey) {
     if (label === "Good") {
       dominantTipAdvice = `Sulfur Dioxide (SO₂) is minimal and well within safe environmental limits.`;
     } else if (label === "Satisfactory") {
-      dominantTipAdvice = `Sulfur Dioxide (SO₂) concentrations are within satisfactory thresholds.`;
+      dominantTipAdvice = `Sulfur Dioxide (SO₂) levels are within satisfactory thresholds.`;
     } else if (label === "Moderate") {
       dominantTipAdvice = `Sulfur Dioxide (SO₂) is elevated. Sensitive individuals should avoid areas near heavy industrial emissions.`;
     } else if (label === "Poor") {
@@ -387,9 +396,9 @@ function generateRecommendations(aqi, dominantKey) {
     } else if (label === "Moderate") {
       dominantTipAdvice = `Dominant pollutant is elevated; sensitive individuals should take precautions during peak hours.`;
     } else if (label === "Poor") {
-      dominantTipAdvice = `High pollutant concentrations; wear protective masks and limit outdoor exposure.`;
+      dominantTipAdvice = `High pollutant levels; wear protective masks and limit outdoor exposure.`;
     } else {
-      dominantTipAdvice = `Severe pollutant concentrations; wear N95 respirator and remain indoors.`;
+      dominantTipAdvice = `Severe pollutant levels; wear N95 respirator and remain indoors.`;
     }
   }
 
@@ -405,6 +414,7 @@ function generateRecommendations(aqi, dominantKey) {
 module.exports = {
   AQI_CATEGORIES,
   POLLUTANT_BREAKPOINTS,
+  EXCLUDED_FROM_AQI,
   normalizePollutantKey,
   calcSubIndex,
   calcAQI,

@@ -1,6 +1,6 @@
 const pool = require("../config/db");
 const mailService = require("./mailService");
-const { calcAQI, getAQICategory, generateRecommendations } = require("../utils/aqi");
+const { calcAQI, getAQICategory, generateRecommendations, EXCLUDED_FROM_AQI } = require("../utils/aqi");
 const { buildDailyReportEmail, buildSpikeAlertEmail } = require("./emailTemplates");
 
 const VALID_SEVERITIES = ["LOW", "MEDIUM", "HIGH"];
@@ -148,8 +148,8 @@ async function buildStationDailyData(station) {
   );
 
   let aqi = null;
-  let category = "Unavailable";
-  let dominantPollutant = "N/A";
+  let category = "AQI unavailable (insufficient data)";
+  let dominantPollutant = "Unavailable";
   let lastUpdate = null;
   let recommendations = [];
   const pollutants = {};
@@ -445,7 +445,7 @@ async function sendAlerts() {
       AND pe.change_percentage >= 75
       AND pe.detected_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
       AND pe.detected_at > sub.created_at
-      AND UPPER(pe.pollutant_id) != 'CO'
+      ${EXCLUDED_FROM_AQI.length > 0 ? `AND UPPER(pe.pollutant_id) NOT IN (${EXCLUDED_FROM_AQI.map(k => `'${k}'`).join(",")})` : ""}
     ORDER BY pe.detected_at DESC
     `
   );

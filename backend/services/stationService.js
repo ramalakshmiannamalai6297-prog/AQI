@@ -217,7 +217,7 @@ async function getStationRecommendations(stationId) {
             city: station.city,
             stationName: station.station_name,
             aqi: null,
-            category: "Unavailable",
+            category: "AQI unavailable (insufficient data)",
             dominantPollutant: "Unavailable",
             recommendations: []
         };
@@ -235,7 +235,7 @@ async function getStationRecommendations(stationId) {
             city: station.city,
             stationName: station.station_name,
             aqi: null,
-            category: "Unavailable",
+            category: "AQI unavailable (insufficient data)",
             dominantPollutant: "Unavailable",
             recommendations: []
         };

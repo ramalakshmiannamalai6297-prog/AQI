@@ -15,6 +15,9 @@ function escapeHtml(str) {
 
 function getCpcbStyle(category) {
   const cat = String(category || "").toLowerCase();
+  if (cat.includes("unavailable") || cat.includes("insufficient") || cat.includes("n/a")) {
+    return { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1", lightBg: "#f8fafc" };
+  }
   if (cat.includes("good")) {
     return { bg: "#10b981", text: "#ffffff", border: "#059669", lightBg: "#ecfdf5" };
   }
@@ -33,7 +36,7 @@ function getCpcbStyle(category) {
   if (cat.includes("severe")) {
     return { bg: "#7f1d1d", text: "#ffffff", border: "#450a0a", lightBg: "#fdf2f8" };
   }
-  return { bg: "#64748b", text: "#ffffff", border: "#475569", lightBg: "#f8fafc" };
+  return { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1", lightBg: "#f8fafc" };
 }
 
 function getAdviceSeverityColor(severity) {
@@ -68,18 +71,19 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
 
   // HTML Cards for each station
   const stationCardsHtml = stations.map((st) => {
-    const cpcb = getCpcbStyle(st.category);
+    const isAqiAvailable = typeof st.aqi === "number" && st.aqi !== null;
+    const cpcb = getCpcbStyle(isAqiAvailable ? st.category : "unavailable");
     const stationName = escapeHtml(st.stationName || "Unknown Station");
     const city = escapeHtml(st.city || "India");
     const state = escapeHtml(st.state || "");
-    const aqiDisplay = typeof st.aqi === "number" ? st.aqi : "N/A";
-    const categoryDisplay = escapeHtml(st.category || "Unavailable");
-    const dominantDisplay = escapeHtml(st.dominantPollutant || "N/A");
+    const aqiDisplay = isAqiAvailable ? st.aqi : null;
+    const categoryDisplay = isAqiAvailable ? escapeHtml(st.category || "") : "AQI unavailable (insufficient data)";
+    const dominantDisplay = isAqiAvailable ? escapeHtml(st.dominantPollutant || "Unavailable") : "Unavailable";
     const lastUpdateDisplay = formatISTDate(st.lastUpdate);
 
     // 24h Summary Section (ONLY if at least 3 historical readings exist and all numbers are valid)
     let summary24hHtml = "";
-    if (st.has24hStats && st.stats24h) {
+    if (isAqiAvailable && st.has24hStats && st.stats24h) {
       const { change, min, max, trend } = st.stats24h;
       const changeNum = Number(change);
       const isNum = Number.isFinite(changeNum);
@@ -111,16 +115,16 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
       `;
     }
 
-    // 6 Pollutants Table
+    // Pollutant AQI Sub-Indices Table (No µg/m³ or mg/m³ units)
     const p = st.pollutants || {};
-    const fmt = (v) => (v !== null && v !== undefined && !isNaN(Number(v)) ? Number(v).toFixed(1) : "N/A");
+    const fmt = (v) => (v !== null && v !== undefined && !isNaN(Number(v)) ? Math.round(Number(v)) : "No data");
     const pollutantsRows = [
-      { name: "PM2.5", label: "Particulate Matter 2.5", val: fmt(p["PM2.5"]), unit: "µg/m³" },
-      { name: "PM10", label: "Particulate Matter 10", val: fmt(p["PM10"]), unit: "µg/m³" },
-      { name: "NO2", label: "Nitrogen Dioxide (NO₂)", val: fmt(p["NO2"]), unit: "µg/m³" },
-      { name: "SO2", label: "Sulphur Dioxide (SO₂)", val: fmt(p["SO2"]), unit: "µg/m³" },
-      { name: "CO", label: "Carbon Monoxide (CO)", val: fmt(p["CO"]), unit: "mg/m³" },
-      { name: "OZONE", label: "Ozone (O₃)", val: fmt(p["OZONE"]), unit: "µg/m³" }
+      { name: "PM2.5", label: "PM2.5 (Fine Particulate)", val: fmt(p["PM2.5"]) },
+      { name: "PM10", label: "PM10 (Coarse Dust)", val: fmt(p["PM10"]) },
+      { name: "NO2", label: "Nitrogen Dioxide (NO₂)", val: fmt(p["NO2"]) },
+      { name: "SO2", label: "Sulphur Dioxide (SO₂)", val: fmt(p["SO2"]) },
+      { name: "CO", label: "Carbon Monoxide (CO)", val: fmt(p["CO"]) },
+      { name: "OZONE", label: "Ozone (O₃)", val: fmt(p["OZONE"]) }
     ];
 
     const pollutantTableHtml = `
@@ -128,8 +132,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
         <thead>
           <tr style="background-color: #f8fafc; color: #64748b; border-bottom: 1px solid #e2e8f0;">
             <th align="left" style="padding: 6px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Pollutant</th>
-            <th align="right" style="padding: 6px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Reading</th>
-            <th align="left" style="padding: 6px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Unit</th>
+            <th align="right" style="padding: 6px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;">AQI Sub-Index</th>
           </tr>
         </thead>
         <tbody>
@@ -138,8 +141,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
               (row, idx) => `
             <tr style="background-color: ${idx % 2 === 0 ? "#ffffff" : "#fbfcfe"}; border-bottom: 1px solid #f1f5f9;">
               <td style="padding: 6px 10px; color: #1e293b; font-weight: 600;">${escapeHtml(row.label)}</td>
-              <td align="right" style="padding: 6px 10px; color: #0f172a; font-weight: 700; font-family: monospace;">${escapeHtml(row.val)}</td>
-              <td style="padding: 6px 10px; color: #64748b; font-size: 11px;">${escapeHtml(row.unit)}</td>
+              <td align="right" style="padding: 6px 10px; color: ${row.val === "No data" ? "#94a3b8" : "#0f172a"}; font-weight: 700; font-family: monospace;">${escapeHtml(row.val)}</td>
             </tr>
           `
             )
@@ -149,7 +151,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
     `;
 
     // Health Advice list
-    const recs = Array.isArray(st.recommendations) ? st.recommendations.slice(0, 4) : [];
+    const recs = isAqiAvailable && Array.isArray(st.recommendations) ? st.recommendations.slice(0, 4) : [];
     const adviceHtml = recs.length > 0 ? `
       <div style="margin-top: 14px;">
         <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
@@ -174,6 +176,33 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
       </div>
     ` : "";
 
+    const aqiBadgeHtml = isAqiAvailable
+      ? `
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color: ${cpcb.bg}; border-radius: 10px; border: 1px solid ${cpcb.border};">
+          <tr>
+            <td align="center" style="padding: 8px 14px;">
+              <div style="font-size: 26px; font-weight: 900; color: ${cpcb.text}; line-height: 1;">
+                ${aqiDisplay}
+              </div>
+              <div style="font-size: 10px; font-weight: 700; color: ${cpcb.text}; text-transform: uppercase; margin-top: 2px; letter-spacing: 0.5px;">
+                ${categoryDisplay}
+              </div>
+            </td>
+          </tr>
+        </table>
+      `
+      : `
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; border-radius: 10px; border: 1px solid #cbd5e1;">
+          <tr>
+            <td align="center" style="padding: 8px 12px;">
+              <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">
+                AQI unavailable (insufficient data)
+              </div>
+            </td>
+          </tr>
+        </table>
+      `;
+
     return `
       <!-- Station Card -->
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); overflow: hidden;">
@@ -191,18 +220,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
                   </div>
                 </td>
                 <td align="right" valign="middle" style="padding-left: 14px;">
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color: ${cpcb.bg}; border-radius: 10px; border: 1px solid ${cpcb.border};">
-                    <tr>
-                      <td align="center" style="padding: 8px 14px;">
-                        <div style="font-size: 26px; font-weight: 900; color: ${cpcb.text}; line-height: 1;">
-                          ${aqiDisplay}
-                        </div>
-                        <div style="font-size: 10px; font-weight: 700; color: ${cpcb.text}; text-transform: uppercase; margin-top: 2px; letter-spacing: 0.5px;">
-                          ${categoryDisplay}
-                        </div>
-                      </td>
-                    </tr>
-                  </table>
+                  ${aqiBadgeHtml}
                 </td>
               </tr>
             </table>
@@ -224,7 +242,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
             ${summary24hHtml}
 
             <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px;">
-              Monitored Pollutants
+              Pollutant AQI Sub-Indices
             </div>
             ${pollutantTableHtml}
 
@@ -314,7 +332,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
 </html>
   `.trim();
 
-  // Plain-Text Version
+  // Plain-Text Version (No units)
   const textParts = [
     "==================================================",
     "AirLensAI - Daily Air Quality Report",
@@ -324,26 +342,27 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
   ];
 
   stations.forEach((st, idx) => {
+    const isAqiAvailable = typeof st.aqi === "number" && st.aqi !== null;
     textParts.push(`[${idx + 1}] ${st.city} - ${st.stationName}`);
-    textParts.push(`Current AQI: ${typeof st.aqi === "number" ? st.aqi : "N/A"} (${st.category || "Unavailable"})`);
-    textParts.push(`Dominant Pollutant: ${st.dominantPollutant || "N/A"}`);
+    textParts.push(`Current AQI: ${isAqiAvailable ? `${st.aqi} (${st.category})` : "AQI unavailable (insufficient data)"}`);
+    textParts.push(`Dominant Pollutant: ${isAqiAvailable ? (st.dominantPollutant || "Unavailable") : "Unavailable"}`);
     textParts.push(`Last Updated: ${formatISTDate(st.lastUpdate)}`);
 
-    if (st.has24hStats && st.stats24h) {
+    if (isAqiAvailable && st.has24hStats && st.stats24h) {
       const { change, min, max, trend } = st.stats24h;
       textParts.push(`24h Summary: Change ${change > 0 ? "+" : ""}${change} | Min ${min} | Max ${max} | Trend ${trend}`);
     }
 
     const p = st.pollutants || {};
-    textParts.push("Pollutant Values:");
-    textParts.push(`• PM2.5: ${p["PM2.5"] ?? "N/A"} µg/m³`);
-    textParts.push(`• PM10: ${p["PM10"] ?? "N/A"} µg/m³`);
-    textParts.push(`• NO₂: ${p["NO2"] ?? "N/A"} µg/m³`);
-    textParts.push(`• SO₂: ${p["SO2"] ?? "N/A"} µg/m³`);
-    textParts.push(`• CO: ${p["CO"] ?? "N/A"} mg/m³`);
-    textParts.push(`• Ozone: ${p["OZONE"] ?? "N/A"} µg/m³`);
+    textParts.push("Pollutant AQI Sub-Indices:");
+    textParts.push(`• PM2.5: ${p["PM2.5"] !== null && p["PM2.5"] !== undefined ? Math.round(Number(p["PM2.5"])) : "No data"}`);
+    textParts.push(`• PM10: ${p["PM10"] !== null && p["PM10"] !== undefined ? Math.round(Number(p["PM10"])) : "No data"}`);
+    textParts.push(`• NO₂: ${p["NO2"] !== null && p["NO2"] !== undefined ? Math.round(Number(p["NO2"])) : "No data"}`);
+    textParts.push(`• SO₂: ${p["SO2"] !== null && p["SO2"] !== undefined ? Math.round(Number(p["SO2"])) : "No data"}`);
+    textParts.push(`• CO: ${p["CO"] !== null && p["CO"] !== undefined ? Math.round(Number(p["CO"])) : "No data"}`);
+    textParts.push(`• Ozone: ${p["OZONE"] !== null && p["OZONE"] !== undefined ? Math.round(Number(p["OZONE"])) : "No data"}`);
 
-    if (Array.isArray(st.recommendations) && st.recommendations.length > 0) {
+    if (isAqiAvailable && Array.isArray(st.recommendations) && st.recommendations.length > 0) {
       textParts.push("Health Advisory:");
       st.recommendations.slice(0, 3).forEach((r) => {
         textParts.push(`• ${r.group}: ${r.advice}`);
@@ -379,7 +398,7 @@ function buildSpikeAlertEmail({ email, spikes }) {
     const currVal = Number(spike.current_value).toFixed(1);
     const pctRise = Number(spike.change_percentage).toFixed(1);
     const detectedAt = formatISTDate(spike.detected_at);
-    const message = escapeHtml(spike.message || "Sudden rapid surge detected in ambient air concentration.");
+    const message = escapeHtml(spike.message || `${pollutant} AQI rose from ${prevVal} to ${currVal}`);
 
     return `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #ffffff; border: 1px solid #fed7aa; border-left: 4px solid #ea580c; border-radius: 10px; margin-bottom: 14px; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.06);">
@@ -401,7 +420,7 @@ function buildSpikeAlertEmail({ email, spikes }) {
             </table>
 
             <div style="margin-top: 10px; font-size: 13px; color: #1e293b;">
-              <strong>${pollutant}</strong> surged from <span style="color: #64748b;">${prevVal}</span> to <span style="font-weight: 700; color: #ea580c;">${currVal}</span>
+              <strong>${pollutant}</strong> AQI rose from <span style="color: #64748b;">${prevVal}</span> to <span style="font-weight: 700; color: #ea580c;">${currVal}</span>
             </div>
 
             <div style="margin-top: 6px; font-size: 12px; color: #475569; line-height: 1.4;">
@@ -495,7 +514,7 @@ function buildSpikeAlertEmail({ email, spikes }) {
 </html>
   `.trim();
 
-  // Plain-Text Version
+  // Plain-Text Version (No units)
   const textParts = [
     "==================================================",
     "AirLensAI - AQI Spike Alert",

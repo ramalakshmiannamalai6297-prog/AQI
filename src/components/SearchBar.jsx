@@ -129,21 +129,39 @@ function SearchBar({ onSelectCity, stations = [] }) {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "14px", fontWeight: "800", color: cat.color }}>
-                      {sensor.aqi} AQI
-                    </span>
-                    <span
-                      style={{
-                        backgroundColor: cat.bg,
-                        color: cat.text,
-                        fontSize: "11px",
-                        fontWeight: "700",
-                        padding: "2px 6px",
-                        borderRadius: "6px"
-                      }}
-                    >
-                      {cat.label}
-                    </span>
+                    {sensor.aqi !== null && sensor.aqi !== undefined ? (
+                      <>
+                        <span style={{ fontSize: "14px", fontWeight: "800", color: cat.color }}>
+                          {sensor.aqi} AQI
+                        </span>
+                        <span
+                          style={{
+                            backgroundColor: cat.bg,
+                            color: cat.text,
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            padding: "2px 6px",
+                            borderRadius: "6px"
+                          }}
+                        >
+                          {cat.label}
+                        </span>
+                      </>
+                    ) : (
+                      <span
+                        style={{
+                          backgroundColor: "#f1f5f9",
+                          color: "#64748b",
+                          fontSize: "11px",
+                          fontWeight: "600",
+                          padding: "3px 8px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1"
+                        }}
+                      >
+                        AQI unavailable (insufficient data)
+                      </span>
+                    )}
                   </div>
                 </div>
               );
