@@ -159,39 +159,29 @@ export function mapBackendHistoryToHourlyTrend(historyList, station = null) {
  * Maps a backend hotspot into component shape
  */
 export function mapBackendHotspot(hotspot) {
-  const stationId = Number(hotspot.station_id);
-  const previousValue = Number(hotspot.previous_value);
-  const currentValue = Number(hotspot.current_value);
-  const changeValue = Number(hotspot.change_value);
-  const changePercentage = Number(hotspot.change_percentage);
-
-  // Sub-index is currentValue directly
-  const sub = calcSubIndex(hotspot.pollutant_id, currentValue);
-  const aqi = sub !== null ? sub : null;
+  if (!hotspot) return null;
+  const stationId = Number(hotspot.stationId || hotspot.station_id);
+  const aqi = hotspot.aqi !== null && hotspot.aqi !== undefined ? Number(hotspot.aqi) : null;
   const cat = getAQICategory(aqi);
 
   return {
     id: String(stationId),
     stationId,
-    city: hotspot.city,
-    state: hotspot.state,
-    station: hotspot.station_name,
-    latitude: Number(hotspot.latitude),
-    longitude: Number(hotspot.longitude),
-    pollutantId: hotspot.pollutant_id,
-    previousValue,
-    currentValue,
-    changeValue,
-    changePercentage,
-    lastUpdate: hotspot.last_update,
+    rank: Number(hotspot.rank) || 1,
+    city: hotspot.city || "Unknown City",
+    state: hotspot.state || "",
+    station: hotspot.stationName || hotspot.station_name || "Station",
+    stationName: hotspot.stationName || hotspot.station_name || "Station",
     aqi,
-    category: cat.label,
+    category: hotspot.category || hotspot.band || cat.label,
+    band: hotspot.category || hotspot.band || cat.label,
     categoryColor: cat.color,
     categoryBg: cat.bg,
     categoryText: cat.text,
-    pm25: hotspot.pollutant_id === "PM2.5" ? Math.round(currentValue) : null,
-    pm10: hotspot.pollutant_id === "PM10" ? Math.round(currentValue) : null,
-    trend: `+${changePercentage.toFixed(1)}% ${hotspot.pollutant_id}`
+    dominantPollutant: hotspot.dominantPollutant || "Unavailable",
+    pm25: hotspot.pm25 !== null && hotspot.pm25 !== undefined ? Number(hotspot.pm25) : null,
+    pm10: hotspot.pm10 !== null && hotspot.pm10 !== undefined ? Number(hotspot.pm10) : null,
+    lastUpdate: hotspot.lastUpdate || hotspot.last_update || null
   };
 }
 

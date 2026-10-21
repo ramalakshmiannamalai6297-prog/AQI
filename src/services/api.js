@@ -2,39 +2,57 @@
 const BASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) 
   || "http://localhost:3000";
 
+let stationsPromise = null;
+let stationsCache = null;
+
 /**
  * Fetch all monitoring stations with latest pollutant readings
  * Endpoint: GET /api/stations
  */
-export async function getStations() {
-  try {
-    const response = await fetch(`${BASE_URL}/api/stations`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch stations: ${response.status} ${response.statusText}`);
-    }
-    const data = await response.json();
-    return {
-      count: data.count || 0,
-      stations: Array.isArray(data.stations)
-        ? data.stations.map((s) => ({
-            ...s,
-            stationId: Number(s.stationId),
-            latitude: Number(s.latitude),
-            longitude: Number(s.longitude),
-            readingId: s.readingId ? Number(s.readingId) : undefined,
-            pollutants: s.pollutants
-              ? Object.entries(s.pollutants).reduce((acc, [key, val]) => {
-                  acc[key] = Number(val);
-                  return acc;
-                }, {})
-              : {}
-          }))
-        : []
-    };
-  } catch (error) {
-    console.error("Error in getStations:", error);
-    throw error;
+export async function getStations(forceRefresh = false) {
+  if (!forceRefresh && stationsCache) {
+    return stationsCache;
   }
+  if (!forceRefresh && stationsPromise) {
+    return stationsPromise;
+  }
+
+  stationsPromise = (async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/stations`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stations: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+      const result = {
+        count: data.count || (Array.isArray(data.stations) ? data.stations.length : 0),
+        stations: Array.isArray(data.stations)
+          ? data.stations.map((s) => ({
+              ...s,
+              stationId: Number(s.stationId),
+              latitude: Number(s.latitude),
+              longitude: Number(s.longitude),
+              readingId: s.readingId ? Number(s.readingId) : undefined,
+              pollutants: s.pollutants
+                ? Object.entries(s.pollutants).reduce((acc, [key, val]) => {
+                    acc[key] = Number(val);
+                    return acc;
+                  }, {})
+                : {}
+            }))
+          : []
+      };
+      stationsCache = result;
+      return result;
+    } catch (error) {
+      console.error("Error in getStations:", error);
+      throw error;
+    } finally {
+      stationsPromise = null;
+    }
+  })();
+
+  return stationsPromise;
 }
 
 /**
@@ -75,10 +93,10 @@ export async function getStationHistory(stationId, limit = 24) {
 }
 
 /**
- * Fetch pollution hotspots (spikes) across stations
- * Endpoint: GET /api/hotspots?limit=10
+ * Fetch pollution hotspots across stations (worst station per city)
+ * Endpoint: GET /api/hotspots?limit=12
  */
-export async function getHotspots(limit = 10) {
+export async function getHotspots(limit = 12) {
   try {
     const response = await fetch(`${BASE_URL}/api/hotspots?limit=${limit}`);
     if (!response.ok) {
@@ -86,23 +104,8 @@ export async function getHotspots(limit = 10) {
     }
     const data = await response.json();
     return {
-      count: data.count || 0,
-      hotspots: Array.isArray(data.hotspots)
-        ? data.hotspots.map((h) => ({
-            station_id: Number(h.station_id),
-            station_name: h.station_name,
-            city: h.city,
-            state: h.state,
-            latitude: Number(h.latitude),
-            longitude: Number(h.longitude),
-            pollutant_id: h.pollutant_id,
-            previous_value: Number(h.previous_value),
-            current_value: Number(h.current_value),
-            change_value: Number(h.change_value),
-            change_percentage: Number(h.change_percentage),
-            last_update: h.last_update
-          }))
-        : []
+      count: data.count || (Array.isArray(data.hotspots) ? data.hotspots.length : 0),
+      hotspots: Array.isArray(data.hotspots) ? data.hotspots : []
     };
   } catch (error) {
     console.error("Error in getHotspots:", error);

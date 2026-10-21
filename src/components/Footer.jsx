@@ -29,7 +29,7 @@ function Footer() {
           <div>
             <strong style={{ color: "#ffffff", fontSize: "15px" }}>AirLens AI</strong>
             <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: "12px" }}>
-              National Ambient Air Quality Monitoring & Analytics Platform (Frontend Prototype)
+              Real-time air quality monitoring and insights across India
             </p>
           </div>
         </div>
@@ -43,7 +43,7 @@ function Footer() {
         </div>
 
         <div style={{ color: "#64748b", fontSize: "12px" }}>
-          CPCB & WHO Benchmark Data Alignment • 2026 AirLens
+          Data: CPCB via data.gov.in, updated hourly • AQI as per the CPCB National AQI • © {new Date().getFullYear()} AirLens AI
         </div>
       </div>
     </footer>

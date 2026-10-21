@@ -1,84 +1,78 @@
-const db = require("../config/db");
-const { EXCLUDED_FROM_AQI } = require("../utils/aqi");
+const { getLatestStations } = require("./stationService");
+const { calcAQI, getAQICategory } = require("../utils/aqi");
 
-async function getHotspots(limit = 10) {
-  const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
+async function getHotspots(limit = 12) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 12, 1), 50);
+  const stations = await getLatestStations();
+  const now = Date.now();
+  const candidateStations = [];
 
-  let excludePr = "";
-  let excludeRp = "";
-  if (EXCLUDED_FROM_AQI.length > 0) {
-    const list = EXCLUDED_FROM_AQI.map(k => `'${k}'`).join(",");
-    excludePr = `WHERE UPPER(pr.pollutant_id) NOT IN (${list})`;
-    excludeRp = `AND UPPER(rp.pollutant_id) NOT IN (${list})`;
+  for (const s of stations) {
+    if (!s.lastUpdate) continue;
+    const d = new Date(s.lastUpdate).getTime();
+    if (isNaN(d)) continue;
+    const diffMinutes = Math.max(0, Math.round((now - d) / (1000 * 60)));
+    // Exclude stations older than 24 hours (same threshold as existing station health "Offline" rule)
+    if (diffMinutes >= 1440) continue;
+
+    const aqiRes = calcAQI(s.pollutants);
+    if (!aqiRes || typeof aqiRes.aqi !== "number") continue;
+
+    const cat = getAQICategory(aqiRes.aqi);
+
+    candidateStations.push({
+      stationId: s.stationId,
+      stationName: s.stationName,
+      city: s.city,
+      state: s.state,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      aqi: aqiRes.aqi,
+      category: cat.label,
+      band: cat.label,
+      dominantPollutant: aqiRes.dominantPollutant,
+      pm25: aqiRes.subIndices["PM2.5"] ?? null,
+      pm10: aqiRes.subIndices["PM10"] ?? null,
+      lastUpdate: s.lastUpdate
+    });
   }
 
-  const [rows] = await db.query(
-    `
-    WITH ranked_pollutants AS (
-      SELECT
-        ar.station_id,
-        ar.reading_id,
-        ar.last_update,
-        pr.pollutant_id,
-        pr.pollutant_avg AS current_value,
+  // Group by city (case-insensitive trimmed city value), keep highest-AQI station in each city
+  const cityMap = new Map();
+  for (const item of candidateStations) {
+    const key = (item.city || "").trim().toLowerCase();
+    if (!key) continue;
+    const existing = cityMap.get(key);
+    if (!existing) {
+      cityMap.set(key, item);
+    } else {
+      if (item.aqi > existing.aqi) {
+        cityMap.set(key, item);
+      } else if (item.aqi === existing.aqi && item.stationName.localeCompare(existing.stationName) < 0) {
+        cityMap.set(key, item);
+      }
+    }
+  }
 
-        LAG(pr.pollutant_avg) OVER (
-          PARTITION BY ar.station_id, pr.pollutant_id
-          ORDER BY ar.last_update
-        ) AS previous_value,
+  const worstPerCity = Array.from(cityMap.values());
+  // Sort by AQI descending, ties broken by station name
+  worstPerCity.sort((a, b) => b.aqi - a.aqi || a.stationName.localeCompare(b.stationName));
 
-        ROW_NUMBER() OVER (
-          PARTITION BY ar.station_id, pr.pollutant_id
-          ORDER BY ar.last_update DESC
-        ) AS latest_rank
-
-      FROM aqi_readings ar
-      JOIN pollutant_readings pr
-        ON pr.reading_id = ar.reading_id
-      ${excludePr}
-    )
-    
-    SELECT
-      s.station_id,
-      s.station_name,
-      s.city,
-      s.state,
-      s.latitude,
-      s.longitude,
-
-      rp.pollutant_id,
-      rp.previous_value,
-      rp.current_value,
-
-      (rp.current_value - rp.previous_value) AS change_value,
-
-      ROUND(
-        (
-          (rp.current_value - rp.previous_value)
-          / rp.previous_value
-        ) * 100,
-        2
-      ) AS change_percentage,
-
-      rp.last_update
-
-    FROM ranked_pollutants rp
-    JOIN stations s
-      ON s.station_id = rp.station_id
-
-    WHERE rp.latest_rank = 1
-      AND rp.previous_value IS NOT NULL
-      AND rp.previous_value > 0
-      AND rp.current_value > rp.previous_value
-      ${excludeRp}
-
-    ORDER BY change_percentage DESC, change_value DESC
-    LIMIT ?
-    `,
-    [safeLimit]
-  );
-
-  return rows;
+  return worstPerCity.slice(0, safeLimit).map((item, index) => ({
+    rank: index + 1,
+    city: item.city,
+    state: item.state,
+    stationId: item.stationId,
+    stationName: item.stationName,
+    station_name: item.stationName,
+    aqi: item.aqi,
+    category: item.category,
+    band: item.band,
+    dominantPollutant: item.dominantPollutant,
+    pm25: item.pm25,
+    pm10: item.pm10,
+    lastUpdate: item.lastUpdate
+  }));
 }
 
 module.exports = { getHotspots };

@@ -73,7 +73,7 @@ exports.getEvents = async (req, res) => {
 
 exports.getHotspots = async (req, res) => {
     try {
-        const limit = req.query.limit || 10;
+        const limit = req.query.limit || 12;
 
         const hotspots = await getHotspots(limit);
 

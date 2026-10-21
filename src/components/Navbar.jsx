@@ -1,9 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { HiOutlineMap, HiOutlineViewGrid, HiOutlineFire, HiOutlineSparkles, HiOutlineLightBulb, HiOutlineBell } from "react-icons/hi";
+import { getStations } from "../services/api";
 
 function Navbar() {
   const location = useLocation();
+  const [stationCount, setStationCount] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getStations()
+      .then((data) => {
+        if (mounted && data && typeof data.count === "number") {
+          setStationCount(data.count);
+        }
+      })
+      .catch((err) => {
+        console.error("Navbar: Failed to load station count:", err);
+        if (mounted) {
+          setStationCount(null);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const navLinks = [
     { path: "/", label: "AQI Map", icon: <HiOutlineMap size={18} /> },
@@ -153,7 +174,9 @@ function Navbar() {
           }}
         >
           <span className="pulse-dot"></span>
-          20 Active Stations
+          {stationCount !== null
+            ? `${stationCount} ${stationCount === 1 ? "Station" : "Stations"} Live`
+            : "Live"}
         </div>
       </div>
     </header>

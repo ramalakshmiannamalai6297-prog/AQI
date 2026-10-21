@@ -260,11 +260,29 @@ async function runVerification() {
 
       const all200 = hRes.status === 200 && sRes.status === 200 && hotRes.status === 200 && eRes.status === 200;
 
-      if (all200) {
+      const hotData = await hotRes.json();
+      const hotspotsList = hotData.hotspots || [];
+      const isArray = Array.isArray(hotspotsList);
+      const isSorted = hotspotsList.every((h, idx) => idx === 0 || h.aqi <= hotspotsList[idx - 1].aqi);
+      const citySet = new Set();
+      let uniqueCities = true;
+      for (const h of hotspotsList) {
+        const c = (h.city || "").trim().toLowerCase();
+        if (citySet.has(c)) {
+          uniqueCities = false;
+          break;
+        }
+        citySet.add(c);
+      }
+      const allAqiValid = hotspotsList.length > 0 && hotspotsList.every(h => typeof h.aqi === "number" && h.aqi >= 0 && h.aqi <= 500);
+      const hotspotShapeOk = isArray && isSorted && uniqueCities && allAqiValid;
+
+      if (all200 && hotspotShapeOk) {
         results.e = true;
         console.log(`[PASS] e) Core endpoints all responded with HTTP 200 OK.`);
+        console.log(`       Hotspots verified: ${hotspotsList.length} items, sorted by AQI descending, at most 1 per city, every AQI in 0-500.`);
       } else {
-        console.error(`[FAIL] e) Core endpoints check failed. Statuses: health=${hRes.status}, stations=${sRes.status}, hotspots=${hotRes.status}, events=${eRes.status}`);
+        console.error(`[FAIL] e) Core endpoints check failed. Statuses: health=${hRes.status}, stations=${sRes.status}, hotspots=${hotRes.status}, events=${eRes.status}, hotspotShapeOk=${hotspotShapeOk}`);
       }
     } catch (err) {
       console.error(`[FAIL] e) Core endpoints error:`, err.message);

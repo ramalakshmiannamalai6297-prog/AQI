@@ -12,6 +12,39 @@ import {
   HiOutlineArrowRight
 } from "react-icons/hi";
 
+const PRIMARY_CITIES = [
+  { name: "Delhi", aliases: ["delhi"] },
+  { name: "Mumbai", aliases: ["mumbai"] },
+  { name: "Kolkata", aliases: ["kolkata", "calcutta"] },
+  { name: "Bengaluru", aliases: ["bengaluru", "bangalore"] },
+  { name: "Chennai", aliases: ["chennai", "madras"] },
+  { name: "Hyderabad", aliases: ["hyderabad"] }
+];
+
+const FALLBACK_CITIES = [
+  { name: "Pune", aliases: ["pune", "poona"] },
+  { name: "Ahmedabad", aliases: ["ahmedabad", "amdavad"] },
+  { name: "Jaipur", aliases: ["jaipur"] },
+  { name: "Lucknow", aliases: ["lucknow"] }
+];
+
+function getCityCard(cityDef, stationList) {
+  const matches = stationList.filter((s) => {
+    if (typeof s.aqi !== "number" || s.aqi === null) return false;
+    const c = (s.city || "").trim().toLowerCase();
+    return cityDef.aliases.some((alias) => c === alias);
+  });
+
+  if (matches.length === 0) return null;
+
+  matches.sort((a, b) => a.aqi - b.aqi || (a.stationName || a.station || "").localeCompare(b.stationName || b.station || ""));
+  const medianIndex = Math.floor((matches.length - 1) / 2);
+  return {
+    cityName: cityDef.name,
+    station: matches[medianIndex]
+  };
+}
+
 function Home() {
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +114,19 @@ function Home() {
   const cleanest = validStations.length > 0
     ? [...validStations].sort((a, b) => a.aqi - b.aqi)[0]
     : null;
+
+  const cityCards = [];
+  for (const def of PRIMARY_CITIES) {
+    const card = getCityCard(def, stations);
+    if (card) cityCards.push(card);
+  }
+  if (cityCards.length < 6) {
+    for (const fb of FALLBACK_CITIES) {
+      if (cityCards.length >= 6) break;
+      const card = getCityCard(fb, stations);
+      if (card) cityCards.push(card);
+    }
+  }
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "20px 24px" }}>
@@ -318,16 +364,16 @@ function Home() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
             gap: "14px"
           }}
         >
-          {stations.slice(0, 10).map((sensor) => {
+          {cityCards.map(({ cityName, station: sensor }) => {
             const cat = getAQICategory(sensor.aqi);
             return (
               <Link
-                key={sensor.id}
-                to={`/dashboard?city=${sensor.id}`}
+                key={sensor.id || sensor.stationId}
+                to={`/dashboard?city=${sensor.id || sensor.stationId}`}
                 style={{
                   backgroundColor: "#ffffff",
                   borderRadius: "14px",
@@ -352,16 +398,19 @@ function Home() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                   <div>
                     <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
-                      {sensor.city}
+                      {cityName}
                     </h4>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>{sensor.state}</span>
+                    <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>
+                      {sensor.stationName || sensor.station}
+                    </span>
                   </div>
                   <span
                     style={{
                       width: "10px",
                       height: "10px",
                       borderRadius: "50%",
-                      backgroundColor: cat.color
+                      backgroundColor: cat.color,
+                      flexShrink: 0
                     }}
                   />
                 </div>
