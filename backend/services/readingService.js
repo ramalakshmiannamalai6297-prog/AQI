@@ -1,6 +1,11 @@
 const db = require("../config/db")
 
 function formatMysqlDate(lastUpdate){
+    // CPCB sends DD-MM-YYYY; WAQI sends YYYY-MM-DD.
+    if (/^\d{4}-\d{2}-\d{2}/.test(lastUpdate)) {
+        return lastUpdate;
+    }
+
     const [date, time] = lastUpdate.split(" ")
     const [day, month, year] = date.split("-")
 

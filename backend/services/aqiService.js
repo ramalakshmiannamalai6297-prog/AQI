@@ -1,4 +1,5 @@
 const apiClient = require("../utils/apiClient");
+const { getWaqiRecords } = require("./waqiService");
 
 const apiKey = process.env.API_KEY;
 const MAX_ATTEMPTS = 3;
@@ -41,5 +42,15 @@ exports.getAqi = async () => {
         }
     }
 
-    throw lastError;
+    console.warn(
+        "CPCB/data.gov.in is unavailable. Trying WAQI fallback instead."
+    );
+
+    try {
+        return await getWaqiRecords();
+    } catch (waqiError) {
+        throw new Error(
+            `CPCB failed: ${lastError.message}. WAQI fallback failed: ${waqiError.message}`
+        );
+    }
 };
