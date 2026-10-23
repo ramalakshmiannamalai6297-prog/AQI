@@ -18,9 +18,8 @@
 8. [Available scripts](#available-scripts)
 9. [API reference](#api-reference)
 10. [Email alerts](#email-alerts)
-11. [Limitations](#limitations)
-12. [Team](#team)
-13. [Data source and acknowledgements](#data-source-and-acknowledgements)
+11. [Limitations](#limitations) <!-- [Team](#team) -->
+12. [Data source and acknowledgements](#data-source-and-acknowledgements)
 ---
  
 ## Features
@@ -70,6 +69,7 @@ The feed's pollutant values are already **CPCB AQI sub-indices (0-500)**, not co
 - **Data requirement (CPCB):** an AQI is shown only when at least **3 pollutants** have real values and at least one is **PM2.5 or PM10**. Otherwise: "AQI unavailable (insufficient data)".
 - A pollutant reported as `NA` means no data, never 0.
 - Values are never converted and no units are shown.
+
 | AQI | Band |
 |---|---|
 | 0-50 | Good |
