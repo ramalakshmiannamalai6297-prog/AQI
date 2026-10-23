@@ -27,7 +27,7 @@ function Footer() {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{ fontSize: "20px" }}>🌍</span>
           <div>
-            <strong style={{ color: "#ffffff", fontSize: "15px" }}>AirLens AI</strong>
+            <strong style={{ color: "#ffffff", fontSize: "15px" }}>AirLens</strong>
             <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: "12px" }}>
               Real-time air quality monitoring and insights across India
             </p>
@@ -38,12 +38,11 @@ function Footer() {
           <Link to="/" style={{ color: "#cbd5e1" }}>Interactive Map</Link>
           <Link to="/dashboard" style={{ color: "#cbd5e1" }}>Analysis Dashboard</Link>
           <Link to="/hotspots" style={{ color: "#cbd5e1" }}>Hotspots</Link>
-          <Link to="/prediction" style={{ color: "#cbd5e1" }}>AI Forecast</Link>
-          <Link to="/recommendations" style={{ color: "#cbd5e1" }}>Health Guide</Link>
+          <Link to="/notifications" style={{ color: "#cbd5e1" }}>Alerts</Link>
         </div>
 
         <div style={{ color: "#64748b", fontSize: "12px" }}>
-          Data: CPCB via data.gov.in, updated hourly • AQI as per the CPCB National AQI • © {new Date().getFullYear()} AirLens AI
+          Data: CPCB via data.gov.in, checked every 15 minutes • AQI as per the CPCB National AQI • © {new Date().getFullYear()} AirLens
         </div>
       </div>
     </footer>

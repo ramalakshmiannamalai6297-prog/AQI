@@ -70,7 +70,7 @@ function Hotspots() {
           Pollution Hotspots
         </h1>
         <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-          The most polluted station in each city, ranked by current AQI. Based on the latest hourly reading from each station.
+          The most polluted station in each city, ranked by current AQI. Based on the latest reading from each station.
         </p>
       </div>
 

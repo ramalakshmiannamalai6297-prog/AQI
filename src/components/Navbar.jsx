@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { HiOutlineMap, HiOutlineViewGrid, HiOutlineFire, HiOutlineSparkles, HiOutlineLightBulb, HiOutlineBell } from "react-icons/hi";
+import { HiOutlineMap, HiOutlineViewGrid, HiOutlineFire, HiOutlineBell } from "react-icons/hi";
 import { getStations } from "../services/api";
 
 function Navbar() {
@@ -30,8 +30,6 @@ function Navbar() {
     { path: "/", label: "AQI Map", icon: <HiOutlineMap size={18} /> },
     { path: "/dashboard", label: "Dashboard", icon: <HiOutlineViewGrid size={18} /> },
     { path: "/hotspots", label: "Hotspots", icon: <HiOutlineFire size={18} /> },
-    { path: "/prediction", label: "AI Forecast", icon: <HiOutlineSparkles size={18} /> },
-    { path: "/recommendations", label: "Health Guide", icon: <HiOutlineLightBulb size={18} /> },
     { path: "/notifications", label: "Alerts", icon: <HiOutlineBell size={18} /> }
   ];
 
@@ -81,7 +79,7 @@ function Navbar() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "-0.5px" }}>
-              AirLens<span style={{ color: "#38bdf8" }}>AI</span>
+              AirLens
             </span>
             <span
               style={{

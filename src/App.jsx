@@ -5,8 +5,6 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Hotspots from "./pages/Hotspots";
-import Prediction from "./pages/Prediction";
-import Recommendations from "./pages/Recommendations";
 import Notifications from "./pages/Notifications";
 
 function App() {
@@ -20,8 +18,6 @@ function App() {
             <Route path="/map" element={<Home />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/hotspots" element={<Hotspots />} />
-            <Route path="/prediction" element={<Prediction />} />
-            <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

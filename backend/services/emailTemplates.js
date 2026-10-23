@@ -1,5 +1,5 @@
 /**
- * AirLensAI Responsive Email Templates
+ * AirLens Responsive Email Templates
  * Built with HTML table layout and inline CSS for email client compatibility.
  */
 
@@ -260,7 +260,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AirLensAI Daily Air Quality Report</title>
+  <title>AirLens Daily Air Quality Report</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #0f172a;">
   <center style="width: 100%; background-color: #f1f5f9; padding: 24px 0;">
@@ -277,7 +277,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
                   <tr>
                     <td>
                       <div style="font-size: 22px; font-weight: 900; color: #38bdf8; letter-spacing: -0.5px;">
-                        AirLens<span style="color: #ffffff;">AI</span>
+                        AirLens
                       </div>
                       <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">
                         Daily Air Quality Morning Report
@@ -318,10 +318,10 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
           <div style="font-size: 11px; color: #94a3b8; line-height: 1.6;">
             Data comes directly from <strong>CPCB (Central Pollution Control Board)</strong> via <strong>data.gov.in</strong>.<br>
             AQI calculated strictly according to Indian CPCB standards.<br>
-            To update your monitoring preferences or unsubscribe, please visit the <strong>Alerts</strong> page in AirLensAI.
+            To update your monitoring preferences or unsubscribe, please visit the <strong>Alerts</strong> page in AirLens.
           </div>
           <div style="margin-top: 10px; font-size: 11px; color: #cbd5e1;">
-            AirLensAI Environmental Intelligence Network &bull; Asia/Kolkata
+            AirLens Environmental Intelligence Network &bull; Asia/Kolkata
           </div>
         </td>
       </tr>
@@ -335,7 +335,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
   // Plain-Text Version (No units)
   const textParts = [
     "==================================================",
-    "AirLensAI - Daily Air Quality Report",
+    "AirLens - Daily Air Quality Report",
     `Delivered to: ${email}`,
     `Date: ${formattedToday}`,
     "==================================================\n"
@@ -375,7 +375,7 @@ function buildDailyReportEmail({ email, stations, dateStr }) {
   textParts.push("Data comes from CPCB via data.gov.in.");
   textParts.push("You can unsubscribe anytime on the Alerts page.");
 
-  const subject = `AirLensAI Daily Air Quality Report - ${dateStr || "Today"}`;
+  const subject = `AirLens Daily Air Quality Report - ${dateStr || "Today"}`;
 
   return { html, text: textParts.join("\n"), subject };
 }
@@ -448,7 +448,7 @@ function buildSpikeAlertEmail({ email, spikes }) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AirLensAI Pollution Spike Alert</title>
+  <title>AirLens Pollution Spike Alert</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #fff7ed; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a;">
   <center style="width: 100%; background-color: #fff7ed; padding: 24px 0;">
@@ -467,7 +467,7 @@ function buildSpikeAlertEmail({ email, spikes }) {
                         ⚠️ CRITICAL POLLUTION INCIDENT
                       </div>
                       <div style="font-size: 22px; font-weight: 900; color: #ffffff; margin-top: 4px;">
-                        AirLensAI AQI Spike Alert
+                        AirLens AQI Spike Alert
                       </div>
                       <div style="font-size: 13px; color: #ffedd5; margin-top: 4px;">
                         ${totalSpikes} sudden pollution spike${totalSpikes > 1 ? "s" : ""} detected in your stations (&ge;75% rise)
@@ -503,7 +503,7 @@ function buildSpikeAlertEmail({ email, spikes }) {
         <td style="padding: 10px 16px 30px; text-align: center;">
           <div style="font-size: 11px; color: #9a3412; line-height: 1.6;">
             Data comes from <strong>CPCB</strong> via <strong>data.gov.in</strong>.<br>
-            To manage alerts or unsubscribe, visit the <strong>Alerts</strong> page on AirLensAI.
+            To manage alerts or unsubscribe, visit the <strong>Alerts</strong> page on AirLens.
           </div>
         </td>
       </tr>
@@ -517,7 +517,7 @@ function buildSpikeAlertEmail({ email, spikes }) {
   // Plain-Text Version (No units)
   const textParts = [
     "==================================================",
-    "AirLensAI - AQI Spike Alert",
+    "AirLens - AQI Spike Alert",
     `${totalSpikes} sudden pollution spike(s) in your stations`,
     `Delivered to: ${email}`,
     "==================================================\n"
